@@ -27,6 +27,7 @@ from .refuge import REFUGEDataset
 from .stare import STAREDataset
 from .synapse import SynapseDataset
 from .plantseg115 import PlantSeg115Dataset
+from .plantsegwheat import PlantSegWheatDataset
 from .plantseg_binary import PlantSeg_BinaryDataset
 from .docseg_binary import DocSeg_BinaryDataset
 
@@ -65,5 +66,5 @@ __all__ = [
     'MapillaryDataset_v2', 'Albu', 'LEVIRCDDataset',
     'LoadMultipleRSImageFromFile', 'LoadSingleRSImageFromFile',
     'ConcatCDInput', 'BaseCDDataset', 'DSDLSegDataset', 'BDD100KDataset',
-    'NYUDataset', 'HSIDrive20Dataset', 'PlantSeg115Dataset', 'PlantSeg_BinaryDataset', 'DocSeg_BinaryDataset'
+    'NYUDataset', 'HSIDrive20Dataset', 'PlantSeg115Dataset','PlantSegWheatDataset', 'PlantSeg_BinaryDataset', 'DocSeg_BinaryDataset'
 ]
