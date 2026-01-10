@@ -56,7 +56,7 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 # dataset settings
-train_dataloader = dict(batch_size=16)
+train_dataloader = dict(batch_size=8)
 
 # optimizer
 optim_wrapper = dict(
