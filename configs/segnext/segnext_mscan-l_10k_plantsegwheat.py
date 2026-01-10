@@ -25,3 +25,5 @@ model = dict(
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
+train_dataloader = dict(batch_size=4)
+train_cfg = dict(type='IterBasedTrainLoop', max_iters=40000, val_interval=4000)
