@@ -26,7 +26,7 @@ model = dict(
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
 train_dataloader = dict(batch_size=4)
-train_cfg = dict(type='IterBasedTrainLoop', max_iters=40000, val_interval=4000)
+train_cfg = dict(type='IterBasedTrainLoop', max_iters=30000, val_interval=5000)
 optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
@@ -44,7 +44,7 @@ param_scheduler = [
         type='PolyLR',
         power=1.0,
         begin=1500,
-        end=40000,
+        end=30000,
         eta_min=0.0,
         by_epoch=False,
     )
