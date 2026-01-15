@@ -2,6 +2,7 @@
 dataset_type = 'PlantSegWheatDataset'
 data_root = 'data/plantsegwheat'
 crop_size = (256, 256)
+size_divisor = None
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', reduce_zero_label=False),
