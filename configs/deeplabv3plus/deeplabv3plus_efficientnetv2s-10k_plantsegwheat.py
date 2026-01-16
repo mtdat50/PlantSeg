@@ -12,7 +12,7 @@ data_preprocessor = dict(
     bgr_to_rgb=True,
     pad_val=0,
     seg_pad_val=255,
-    size=(512, 512),
+    size=(256, 256),
     test_cfg=dict(size_divisor=32))
 model = dict(
     type='EncoderDecoder',
@@ -63,7 +63,7 @@ optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer, clip_grad=None)
 param_scheduler = [
     dict(
         type='PolyLR',
-        eta_min=1e-4,
+        eta_min=1e-6,
         power=0.9,
         begin=0,
         end=30000,
