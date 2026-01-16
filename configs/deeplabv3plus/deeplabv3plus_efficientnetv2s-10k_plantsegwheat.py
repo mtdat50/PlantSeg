@@ -3,7 +3,7 @@ _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/schedules/custom_30k.py'
 ]
-train_dataloader = dict(batch_size=16)
+train_dataloader = dict(batch_size=8)
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 data_preprocessor = dict(
