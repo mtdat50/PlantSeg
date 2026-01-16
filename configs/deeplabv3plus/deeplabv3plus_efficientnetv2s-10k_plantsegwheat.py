@@ -12,7 +12,7 @@ data_preprocessor = dict(
     bgr_to_rgb=True,
     pad_val=0,
     seg_pad_val=255,
-    size=(512, 512),
+    # size=(256, 256),
     test_cfg=dict(size_divisor=32))
 model = dict(
     type='EncoderDecoder',
