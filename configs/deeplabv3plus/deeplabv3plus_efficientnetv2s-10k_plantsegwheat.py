@@ -2,7 +2,7 @@ _base_ = [
     '../_base_/datasets/plantsegwheat.py',
     '../_base_/default_runtime.py',
 ]
-train_dataloader = dict(batch_size=8)
+train_dataloader = dict(batch_size=32)
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 data_preprocessor = dict(
@@ -57,7 +57,7 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 # optimizer
-optimizer = dict(type='SGD', lr=0.0001, momentum=0.9, weight_decay=0.0005)
+optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0005)
 optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer, clip_grad=None)
 # learning policy
 param_scheduler = [
