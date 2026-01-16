@@ -63,7 +63,7 @@ optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer, clip_grad=None)
 param_scheduler = [
     dict(
         type='PolyLR',
-        eta_min=1e-6,
+        eta_min=1e-4,
         power=0.9,
         begin=0,
         end=30000,
@@ -71,7 +71,7 @@ param_scheduler = [
 ]
 # training schedule for 30k
 train_cfg = dict(
-    type='IterBasedTrainLoop', max_iters=30000, val_interval=5000)
+    type='IterBasedTrainLoop', max_iters=30000, val_interval=1000)
 val_cfg = dict(type='ValLoop')
 test_cfg = dict(type='TestLoop')
 default_hooks = dict(
