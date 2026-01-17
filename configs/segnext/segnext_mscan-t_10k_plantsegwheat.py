@@ -5,7 +5,7 @@ _base_ = [
 # model settings
 checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_t_20230227-119e8c9f.pth'  # noqa
 ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
-crop_size = (512, 512)
+crop_size = (256, 256)
 data_preprocessor = dict(
     type='SegDataPreProcessor',
     mean=[123.675, 116.28, 103.53],
@@ -13,7 +13,7 @@ data_preprocessor = dict(
     bgr_to_rgb=True,
     pad_val=0,
     seg_pad_val=255,
-    size=(512, 512),
+    size=crop_size,
     test_cfg=dict(size_divisor=32))
 model = dict(
     type='EncoderDecoder',
@@ -56,7 +56,7 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 # dataset settings
-train_dataloader = dict(batch_size=16)
+train_dataloader = dict(batch_size=32)
 
 # optimizer
 optim_wrapper = dict(
