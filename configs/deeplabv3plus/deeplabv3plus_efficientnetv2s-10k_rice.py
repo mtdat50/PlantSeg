@@ -2,7 +2,7 @@ _base_ = [
     '../_base_/datasets/rice.py',
     '../_base_/default_runtime.py',
 ]
-train_dataloader = dict(batch_size=32)
+train_dataloader = dict(batch_size=16)
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 data_preprocessor = dict(
@@ -78,6 +78,6 @@ default_hooks = dict(
     timer=dict(type='IterTimerHook'),
     logger=dict(type='LoggerHook', interval=50, log_metric_by_epoch=False),
     param_scheduler=dict(type='ParamSchedulerHook'),
-    checkpoint=dict(type='CheckpointHook', by_epoch=False, interval=5000),
+    checkpoint=dict(type='CheckpointHook', by_epoch=False, interval=10000),
     sampler_seed=dict(type='DistSamplerSeedHook'),
     visualization=dict(type='SegVisualizationHook'))
