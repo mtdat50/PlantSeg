@@ -1,6 +1,6 @@
 _base_ = [
     '../_base_/default_runtime.py',
-    '../_base_/datasets/rice.py'
+    '../_base_/datasets/plantsegwheat.py'
 ]
 # model settings
 checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_t_20230227-119e8c9f.pth'  # noqa
@@ -47,7 +47,7 @@ model = dict(
         channels=256,
         ham_channels=256,
         dropout_ratio=0.1,
-        num_classes=3,
+        num_classes=9,
         norm_cfg=ham_norm_cfg,
         align_corners=False,
         loss_decode=dict(
