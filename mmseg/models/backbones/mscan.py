@@ -240,12 +240,12 @@ class AttentionModule(BaseModule):
                  attention_kernel_sizes=[5, [1, 7], [1, 11], [1, 21]],
                  attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
                  act_cfg=dict(type='GELU'),
-                 is_ham=False,ham_channels=512, ham_kwargs=dict(), ham_norm_cfg=None):
+                 is_ham=False,ham_kwargs=dict(), ham_norm_cfg=None):
         super().__init__()
         self.proj_1 = nn.Conv2d(in_channels, in_channels, 1)
         self.activation = build_activation_layer(act_cfg)
         if is_ham:
-            self.spatial_gating_unit  = Hamburger(ham_channels, ham_kwargs, ham_norm_cfg)
+            self.spatial_gating_unit  = Hamburger(in_channels, ham_kwargs, ham_norm_cfg)
         else:
             self.spatial_gating_unit = MSCAAttention(in_channels,
                                                  attention_kernel_sizes,
@@ -370,12 +370,12 @@ class MSCABlockWithHam(BaseModule):
                  drop_path=0.,
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
-                 is_ham=False, ham_channels=512, ham_kwargs=dict(), ham_norm_cfg=None):
+                 is_ham=False, ham_kwargs=dict(), ham_norm_cfg=None):
         super().__init__()
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
         self.attn = AttentionModule(channels, attention_kernel_sizes,
                                     attention_kernel_paddings, act_cfg,
-                                    is_ham, ham_channels, ham_kwargs, ham_norm_cfg)
+                                    is_ham, ham_kwargs, ham_norm_cfg)
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = build_norm_layer(norm_cfg, channels)[1]
@@ -633,7 +633,7 @@ class MSCANWithHam(BaseModule):
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
                  init_cfg=None,
-                 n_ham_stages=2, ham_channels=[], ham_kwargs=dict(), ham_norm_cfg=None):
+                 n_ham_stages=2, ham_kwargs=dict(), ham_norm_cfg=None):
         super().__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
@@ -675,7 +675,6 @@ class MSCANWithHam(BaseModule):
                     act_cfg=act_cfg,
                     norm_cfg=norm_cfg,
                     is_ham = (i >= num_stages - n_ham_stages),
-                    ham_channels = ham_channels[i - (num_stages - n_ham_stages)],
                     ham_kwargs = ham_kwargs,
                     ham_norm_cfg = ham_norm_cfg
                 ) for j in range(depths[i])

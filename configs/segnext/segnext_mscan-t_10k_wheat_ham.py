@@ -31,7 +31,7 @@ model = dict(
         attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        n_ham_stages=2, ham_channels=[160, 256],
+        n_ham_stages=1,
         ham_kwargs=dict(
             MD_S=1,
             MD_R=16,
