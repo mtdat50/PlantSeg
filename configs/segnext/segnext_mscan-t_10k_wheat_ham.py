@@ -22,6 +22,7 @@ model = dict(
     backbone=dict(
         type='MSCANWithHam',
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
+        num_stages=5,
         embed_dims=[32, 64, 160, 256, 256],
         mlp_ratios=[8, 8, 4, 4, 1],
         drop_rate=0.0,
