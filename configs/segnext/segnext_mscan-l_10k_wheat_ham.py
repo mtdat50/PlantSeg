@@ -1,4 +1,4 @@
-_base_ = './segnext_mscan-t_10k_plantsegwheat.py'
+_base_ = './segnext_mscan-t_10k_wheat_ham.py'
 # model settings
 checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_l_20230227-cef260d4.pth'  # noqa
 ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
