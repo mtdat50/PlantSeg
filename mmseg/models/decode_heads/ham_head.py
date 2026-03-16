@@ -154,6 +154,37 @@ class NMF2D(Matrix_Decomposition_2D_Base):
 
         return coef
 
+class NMF(NMF2D):
+    def forward(self, x, return_bases=False):
+        """Forward Function."""
+        B, C, N = x.shape
+
+        # (B, C, N) -> (B * S, D, N)
+        D = C // self.S
+        x = x.view(B * self.S, D, N)
+        if not self.rand_init and not hasattr(self, 'bases'):
+            bases = self._build_bases(1, self.S, D, self.R, device=x.device)
+            self.register_buffer('bases', bases)
+
+        # (S, D, R) -> (B * S, D, R)
+        if self.rand_init:
+            bases = self._build_bases(B, self.S, D, self.R, device=x.device)
+        else:
+            bases = self.bases.repeat(B, 1, 1)
+
+        bases, coef = self.local_inference(x, bases)
+
+        # (B * S, N, R)
+        coef = self.compute_coef(x, bases, coef)
+
+        # (B * S, D, R) @ (B * S, N, R)^T -> (B * S, D, N)
+        x = torch.bmm(bases, coef.transpose(1, 2))
+
+        # (B * S, D, N) -> (B, C, N)
+        x = x.view(B, C, N)
+
+        return x
+
 
 class Hamburger(nn.Module):
     """Hamburger Module. It consists of one slice of "ham" (matrix
@@ -188,6 +219,43 @@ class Hamburger(nn.Module):
         ham = F.relu(x + enjoy, inplace=True)
 
         return ham
+
+
+class CustomHamburger(nn.Module):
+    """NMF is configured on inference.
+
+    Args:
+        ham_channels (int): Input and output channels of feature.
+        ham_kwargs (dict): Config of matrix decomposition module.
+        norm_cfg (dict | None): Config of norm layers.
+    """
+
+    def __init__(self,
+                 ham_channels=512,
+                 ham_kwargs=dict(),
+                 norm_cfg=None):
+        super().__init__()
+
+        self.ham_in = ConvModule(
+            ham_channels, ham_channels, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=None, act_cfg=None)
+
+        self.ham = NMF(ham_kwargs)
+
+        self.ham_out = ConvModule(
+            ham_channels, ham_channels, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=norm_cfg, act_cfg=None)
+
+    def forward(self, x):
+        # print('aaaa ', x.shape)
+        enjoy = self.ham_in(x)
+        enjoy = F.relu(enjoy, inplace=True)
+        enjoy = self.ham(
+            enjoy.permute(0, 2, 1)
+        ).permute(0, 2, 1)
+        enjoy = self.ham_out(enjoy)
+        out = F.relu(x + enjoy, inplace=True)
+
+        # print('bbbb ', out.shape)
+        return out
 
 
 @MODELS.register_module()
