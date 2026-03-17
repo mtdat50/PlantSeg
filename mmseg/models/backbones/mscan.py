@@ -418,11 +418,14 @@ class MSCABlockWithChannelAttention(BaseModule):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
 
+        self.channel_attention_type = channel_attn
         match channel_attn:
             case 'Ham':
                 self.channel_attention = CustomHamburger(channels, ham_kwargs, ham_norm_cfg)
             case 'CBAM':
                 self.channel_attention = CAM(channels, r=1)
+            case 'SA':
+                self.channel_attention = nn.MultiheadAttention(channels, num_heads=8, batch_first=True)
             case _:
                 self.channel_attention = nn.Identity()
 
@@ -453,10 +456,15 @@ class MSCABlockWithChannelAttention(BaseModule):
         B, N, C = x.shape
         # print('input to MSCABlockWithChannelAttention', x.shape)
         # exit(0)
+        # print('aaaaa ', H, W)
         x = x.permute(0, 2, 1)
+        normed_x = self.norm0(x)
         x = x + self.drop_path(
             self.layer_scale_0.unsqueeze(-1) *
-            self.channel_attention(self.norm0(x))
+            (
+                self.channel_attention(normed_x) if self.channel_attention_type != 'SA' else
+                self.channel_attention(normed_x, normed_x, normed_x, need_weights=False)
+            )
         )
         x = x.view(B, C, H, W)
         x = x + self.drop_path(
@@ -632,6 +640,7 @@ class MSCAN(BaseModule):
     def forward(self, x):
         """Forward function."""
 
+        print('shape ', x.shape)
         B = x.shape[0]
         outs = []
 
