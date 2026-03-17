@@ -6,6 +6,7 @@ import warnings
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from mmcv.cnn import build_activation_layer, build_norm_layer
 from mmcv.cnn.bricks import DropPath
 from mmengine.model import BaseModule
@@ -380,6 +381,28 @@ class MSCABlockWithHam(BaseModule):
         x = x.view(B, C, N).permute(0, 2, 1)
         return x
 
+
+class CAM(nn.Module):
+    def __init__(self, channels, r):
+        super(CAM, self).__init__()
+        self.channels = channels
+        self.r = r
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=self.channels, out_features=self.channels//self.r, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=self.channels//self.r, out_features=self.channels, bias=True))
+
+    def forward(self, x):
+        max = F.adaptive_max_pool1d(x, output_size=1)
+        avg = F.adaptive_avg_pool1d(x, output_size=1)
+        b, c, _ = x.size()
+        linear_max = self.linear(max.view(b,c)).view(b, c, 1)
+        linear_avg = self.linear(avg.view(b,c)).view(b, c, 1)
+        output = linear_max + linear_avg
+        output = F.sigmoid(output) * x
+        return output
+
+
 class MSCABlockWithChannelAttention(BaseModule):
     def __init__(self,
                  channels,
@@ -390,10 +413,20 @@ class MSCABlockWithChannelAttention(BaseModule):
                  drop_path=0.,
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
+                 channel_attn = 'Ham',
                  ham_kwargs=dict(), ham_norm_cfg=None):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
-        self.channel_attention = CustomHamburger(channels, ham_kwargs, ham_norm_cfg)
+
+        match channel_attn:
+            case 'Ham':
+                self.channel_attention = CustomHamburger(channels, ham_kwargs, ham_norm_cfg)
+            case 'CBAM':
+                self.channel_attention = CAM(channels, r=1)
+            case _:
+                self.channel_attention = nn.Identity()
+
+
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
         self.attn = MSCASpatialAttention(channels, attention_kernel_sizes,
                                          attention_kernel_paddings, act_cfg)
@@ -739,6 +772,7 @@ class MSCANWithChannelAttention(MSCAN):
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
                  init_cfg=None,
+                 channel_attn = 'Ham',
                  ham_kwargs=dict(), ham_norm_cfg=None):
         super(MSCAN, self).__init__(init_cfg=init_cfg)
 
@@ -780,6 +814,7 @@ class MSCANWithChannelAttention(MSCAN):
                     drop_path=dpr[cur + j],
                     act_cfg=act_cfg,
                     norm_cfg=norm_cfg,
+                    channel_attn=channel_attn,
                     ham_kwargs=ham_kwargs,
                     ham_norm_cfg=ham_norm_cfg) for j in range(depths[i])
             ])
