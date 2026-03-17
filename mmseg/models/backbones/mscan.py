@@ -640,7 +640,7 @@ class MSCAN(BaseModule):
     def forward(self, x):
         """Forward function."""
 
-        print('shape ', x.shape)
+        # print('shape ', x.shape)
         B = x.shape[0]
         outs = []
 
