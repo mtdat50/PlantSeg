@@ -466,7 +466,7 @@ class MSCABlockWithChannelAttention(BaseModule):
         if self.channel_attention_type == 'SA':
             x = x
             normed_x = self.norm0(x).view(B, C, H, W)
-            padding = (0, self.input_size - H, 0, self.input_size - W)
+            padding = (0, self.input_size - W, 0, self.input_size - H)
             try:
                 normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
             except:
