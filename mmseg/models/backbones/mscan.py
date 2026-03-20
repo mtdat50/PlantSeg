@@ -467,12 +467,7 @@ class MSCABlockWithChannelAttention(BaseModule):
             x = x
             normed_x = self.norm0(x).view(B, C, H, W)
             padding = (0, self.input_size - W, 0, self.input_size - H)
-            try:
-                normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
-            except:
-                print('Error in padding, input size:', normed_x.shape, 'padding:', padding)
-                print('H, W:', H, W)
-                exit(0)
+            normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
 
             low_dim_x = self.reduce(normed_x)
             attn_output = self.channel_attention(low_dim_x, low_dim_x, low_dim_x, need_weights=False)[0]
