@@ -414,18 +414,22 @@ class MSCABlockWithChannelAttention(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  channel_attn = 'Ham',
-                 ham_kwargs=dict(), ham_norm_cfg=None):
+                 ham_kwargs=dict(), ham_norm_cfg=None,
+                input_size=256):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
 
         self.channel_attention_type = channel_attn
         match channel_attn:
             case 'Ham':
-                self.channel_attention = CustomHamburger(channels, ham_kwargs, ham_norm_cfg)
+                self.channel_attention = CustomHamburger(channels, 64, ham_kwargs, ham_norm_cfg)
             case 'CBAM':
                 self.channel_attention = CAM(channels, r=1)
             case 'SA':
-                self.channel_attention = nn.MultiheadAttention(channels, num_heads=8, batch_first=True)
+                self.input_size = input_size
+                self.reduce = nn.Linear(self.input_size ** 2, 64)
+                self.channel_attention = nn.MultiheadAttention(64, num_heads=8, batch_first=True)
+                self.expand = nn.Linear(64, self.input_size ** 2)
             case _:
                 self.channel_attention = nn.Identity()
 
@@ -458,15 +462,26 @@ class MSCABlockWithChannelAttention(BaseModule):
         # exit(0)
         # print('aaaaa ', H, W)
         x = x.permute(0, 2, 1)
-        normed_x = self.norm0(x)
-        x = x + self.drop_path(
-            self.layer_scale_0.unsqueeze(-1) *
-            (
-                self.channel_attention(normed_x) if self.channel_attention_type != 'SA' else
-                self.channel_attention(normed_x, normed_x, normed_x, need_weights=False)
+
+        if self.channel_attention_type == 'SA':
+            x = x
+            normed_x = self.norm0(x).view(B, C, H, W)
+            padding = (0, self.input_size - H, 0, self.input_size - W)
+            normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
+
+            low_dim_x = self.reduce(normed_x)
+            attn_output = self.channel_attention(low_dim_x, low_dim_x, low_dim_x, need_weights=False)[0]
+            attn_output = self.expand(attn_output)
+
+            attn_output = attn_output.view(B, C, self.input_size, self.input_size)[:, :, :H, :W]
+            x = x.view(B, C, H, W) + self.drop_path(
+                self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
             )
-        )
-        x = x.view(B, C, H, W)
+        else:
+            normed_x = self.norm0(x)
+            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1) * self.channel_attention(normed_x))
+            x = x.view(B, C, H, W)
+
         x = x + self.drop_path(
             self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
             self.attn(self.norm1(x)))
@@ -782,7 +797,8 @@ class MSCANWithChannelAttention(MSCAN):
                  pretrained=None,
                  init_cfg=None,
                  channel_attn = 'Ham',
-                 ham_kwargs=dict(), ham_norm_cfg=None):
+                 ham_kwargs=dict(), ham_norm_cfg=None,
+                 input_size=512):
         super(MSCAN, self).__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
@@ -825,7 +841,8 @@ class MSCANWithChannelAttention(MSCAN):
                     norm_cfg=norm_cfg,
                     channel_attn=channel_attn,
                     ham_kwargs=ham_kwargs,
-                    ham_norm_cfg=ham_norm_cfg) for j in range(depths[i])
+                    ham_norm_cfg=ham_norm_cfg,
+                    input_size=input_size // (4 * 2**i)) for j in range(depths[i])
             ])
             norm = nn.LayerNorm(embed_dims[i])
             cur += depths[i]

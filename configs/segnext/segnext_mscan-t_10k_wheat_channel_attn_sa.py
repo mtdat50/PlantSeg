@@ -19,7 +19,8 @@ model = dict(
         attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        channel_attn='SA'
+        channel_attn='SA',
+        input_size=256
     ),
     decode_head=dict(
         type='LightHamHead',
@@ -46,3 +47,18 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 # train_dataloader = dict(batch_size=2)
+test_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='Resize', scale=(256, 256), keep_ratio=True),
+    # add loading annotation after ``Resize`` because ground truth
+    # does not need to do resize data transform
+    dict(type='LoadAnnotations', reduce_zero_label=False),
+    dict(type='PackSegInputs')
+]
+val_dataloader = dict(
+    dataset=dict(pipeline=test_pipeline)
+)
+
+test_dataloader = dict(
+    dataset=dict(pipeline=test_pipeline)
+)
