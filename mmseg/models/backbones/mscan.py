@@ -181,6 +181,41 @@ class MSCAAttention(BaseModule):
         return x
 
 
+class CustomMSCAAttention(BaseModule):
+    """Attention Module in Multi-Scale Convolutional Attention Module (MSCA).
+
+    Args:
+        channels (int): The dimension of channels.
+    """
+
+    def __init__(self, channels):
+        super().__init__()
+        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;9
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;15
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;21
+        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;27
+        self.channel_mixing = nn.Conv2d(channels, channels, 1)
+
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn1 = self.conv1(self.conv0(x))
+        attn2 = self.conv2(attn1)
+        attn3 = self.conv3(attn2)
+        attn4 = self.conv4(attn3)
+
+        attn = attn1 + attn2 + attn3 + attn4
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -220,6 +255,13 @@ class MSCASpatialAttention(BaseModule):
         x = x + shorcut
         return x
 
+
+class CustomMSCASpatialAttention(MSCASpatialAttention):
+    def __init__(self,
+                 in_channels,
+                 **kwargs):
+        super().__init__(in_channels, **kwargs)
+        self.spatial_gating_unit = CustomMSCAAttention(in_channels)
 
 class AttentionModule(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
@@ -334,6 +376,17 @@ class MSCABlock(BaseModule):
             self.mlp(self.norm2(x)))
         x = x.view(B, C, N).permute(0, 2, 1)
         return x
+
+
+class MSCABlockWithCustomSpatialAttention(MSCABlock):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.attn = CustomMSCASpatialAttention(
+            kwargs['channels'],
+            attention_kernel_sizes=kwargs['attention_kernel_sizes'],
+            attention_kernel_paddings=kwargs['attention_kernel_paddings'],
+            act_cfg=kwargs['act_cfg']
+        )
 
 
 class MSCABlockWithHam(BaseModule):
@@ -671,6 +724,72 @@ class MSCAN(BaseModule):
             outs.append(x)
 
         return outs
+
+
+@MODELS.register_module()
+class MSCANWithCustomSpatialAttention(MSCAN):
+    def __init__(self,
+                 in_channels=3,
+                 embed_dims=[64, 128, 256, 512],
+                 mlp_ratios=[4, 4, 4, 4],
+                 drop_rate=0.,
+                 drop_path_rate=0.,
+                 depths=[3, 4, 6, 3],
+                 num_stages=4,
+                 attention_kernel_sizes=[5, [1, 7], [1, 11], [1, 21]],
+                 attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
+                 act_cfg=dict(type='GELU'),
+                 norm_cfg=dict(type='SyncBN', requires_grad=True),
+                 pretrained=None,
+                 init_cfg=None):
+        super().__init__(init_cfg=init_cfg)
+
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be set at the same time'
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+        elif pretrained is not None:
+            raise TypeError('pretrained must be a str or None')
+
+        self.depths = depths
+        self.num_stages = num_stages
+
+        dpr = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
+        ]  # stochastic depth decay rule
+        cur = 0
+
+        for i in range(num_stages):
+            if i == 0:
+                patch_embed = StemConv(3, embed_dims[0], norm_cfg=norm_cfg)
+            else:
+                patch_embed = OverlapPatchEmbed(
+                    patch_size=7 if i == 0 else 3,
+                    stride=4 if i == 0 else 2,
+                    in_channels=in_channels if i == 0 else embed_dims[i - 1],
+                    embed_dim=embed_dims[i],
+                    norm_cfg=norm_cfg)
+
+            block = nn.ModuleList([
+                MSCABlockWithCustomSpatialAttention(
+                    channels=embed_dims[i],
+                    attention_kernel_sizes=attention_kernel_sizes,
+                    attention_kernel_paddings=attention_kernel_paddings,
+                    mlp_ratio=mlp_ratios[i],
+                    drop=drop_rate,
+                    drop_path=dpr[cur + j],
+                    act_cfg=act_cfg,
+                    norm_cfg=norm_cfg) for j in range(depths[i])
+            ])
+            norm = nn.LayerNorm(embed_dims[i])
+            cur += depths[i]
+
+            setattr(self, f'patch_embed{i + 1}', patch_embed)
+            setattr(self, f'block{i + 1}', block)
+            setattr(self, f'norm{i + 1}', norm)
+
 
 @MODELS.register_module()
 class MSCANWithHam(BaseModule):
