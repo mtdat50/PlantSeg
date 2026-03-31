@@ -44,4 +44,4 @@ model = dict(
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
 
-train_dataloader = dict(batch_size=2)
+# train_dataloader = dict(batch_size=2)
