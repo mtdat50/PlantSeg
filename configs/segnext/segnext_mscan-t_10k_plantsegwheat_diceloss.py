@@ -6,8 +6,8 @@ ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 model = dict(
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', ignore_index=0, loss_weight=.5),
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=.5)
+            dict(type='DiceLoss', ignore_index=0, loss_weight=.75),
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=.25)
         ]
     ),
 )
