@@ -3,6 +3,7 @@ import argparse
 import os
 import os.path as osp
 
+from mmengine.runner import set_random_seed
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 
@@ -80,6 +81,9 @@ def trigger_visualization_hook(cfg, args):
 
 
 def main():
+    random_seed = 0 # set random seed recorded in training log
+    set_random_seed(random_seed, deterministic=False)
+
     args = parse_args()
 
     # load config
