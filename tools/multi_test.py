@@ -2,7 +2,9 @@
 import argparse
 import os
 import os.path as osp
+import pandas as pd
 
+from mmengine.runner import set_random_seed
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 
@@ -80,6 +82,9 @@ def trigger_visualization_hook(cfg, args):
 
 
 def main():
+    seeds = [2**i for i in range(10)]
+    # set_random_seed(random_seed, deterministic=False)
+
     args = parse_args()
 
     # load config
@@ -112,11 +117,37 @@ def main():
         cfg.test_evaluator['output_dir'] = args.out
         cfg.test_evaluator['keep_results'] = True
 
-    # build the runner from config
-    runner = Runner.from_cfg(cfg)
 
-    # start testing
-    runner.test()
+    seeds = [2**i for i in range(10)]
+
+    mious = []
+    mdices = []
+    mprecisions = []
+    mrecalls = []
+    for seed in seeds:
+        cfg.randomness = dict(seed=seed, deterministic=False, diff_rank_seed=True)
+
+        # build the runner from config
+        runner = Runner.from_cfg(cfg)
+
+        metrics = runner.test()
+        mious.append(metrics['mIoU'])
+        mdices.append(metrics['mDice'])
+        mprecisions.append(metrics['mPrecision'])
+        mrecalls.append(metrics['mRecall'])
+        # print(metrics)
+
+    pd.DataFrame({
+        'seed': seeds,
+        'mIoU': mious,
+        'mDice': mdices,
+        'mPrecision': mprecisions,
+        'mRecall': mrecalls
+    }).to_csv(osp.join(cfg.work_dir, 'multi_test_results.csv'), index=False)
+
+    print('mIoU: {:.4f} ± {:.4f}'.format(sum(mious) / len(mious),
+                                        (sum([(x - sum(mious) / len(mious))**2
+                                              for x in mious]) / len(mious))**0.5))
 
 
 if __name__ == '__main__':
