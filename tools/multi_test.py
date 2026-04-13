@@ -145,9 +145,23 @@ def main():
         'mRecall': mrecalls
     }).to_csv(osp.join(cfg.work_dir, 'multi_test_results.csv'), index=False)
 
-    print('mIoU: {:.4f} ± {:.4f}'.format(sum(mious) / len(mious),
-                                        (sum([(x - sum(mious) / len(mious))**2
-                                              for x in mious]) / len(mious))**0.5))
+    mean_miou = sum(mious) / len(mious)
+    mean_mdice = sum(mdices) / len(mdices)
+    mean_mprecision = sum(mprecisions) / len(mprecisions)
+    mean_mrecall = sum(mrecalls) / len(mrecalls)
+
+    std_miou = (sum((x - mean_miou) ** 2 for x in mious) / len(mious))**0.5
+    std_mdice = (sum((x - mean_mdice) ** 2 for x in mdices) / len(mdices))**0.5
+    std_mprecision = (sum((x - mean_mprecision) ** 2 for x in mprecisions) /
+                     len(mprecisions))**0.5
+    std_mrecall = (sum((x - mean_mrecall) ** 2 for x in mrecalls) / len(mrecalls))**0.5
+
+    print(
+        f'mIoU: {mean_miou:.4f} ± {std_miou:.4f}'
+        f'mDice: {mean_mdice:.4f} ± {std_mdice:.4f}'
+        f'mPrecision: {mean_mprecision:.4f} ± {std_mprecision:.4f}'
+        f'mRecall: {mean_mrecall:.4f} ± {std_mrecall:.4f}'
+    )
 
 
 if __name__ == '__main__':
