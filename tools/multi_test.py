@@ -81,6 +81,12 @@ def trigger_visualization_hook(cfg, args):
     return cfg
 
 
+def mean_std(values):
+    mean = sum(values) / len(values)
+    std = (sum((x - mean) ** 2 for x in values) / len(values - 1))**0.5
+    return mean, std
+
+
 def main():
     seeds = [2**i for i in range(10)]
     # set_random_seed(random_seed, deterministic=False)
@@ -145,16 +151,10 @@ def main():
         'mRecall': mrecalls
     }).to_csv(osp.join(cfg.work_dir, 'multi_test_results.csv'), index=False)
 
-    mean_miou = sum(mious) / len(mious)
-    mean_mdice = sum(mdices) / len(mdices)
-    mean_mprecision = sum(mprecisions) / len(mprecisions)
-    mean_mrecall = sum(mrecalls) / len(mrecalls)
-
-    std_miou = (sum((x - mean_miou) ** 2 for x in mious) / len(mious))**0.5
-    std_mdice = (sum((x - mean_mdice) ** 2 for x in mdices) / len(mdices))**0.5
-    std_mprecision = (sum((x - mean_mprecision) ** 2 for x in mprecisions) /
-                     len(mprecisions))**0.5
-    std_mrecall = (sum((x - mean_mrecall) ** 2 for x in mrecalls) / len(mrecalls))**0.5
+    mean_miou, std_miou = mean_std(mious)
+    mean_mdice, std_mdice = mean_std(mdices)
+    mean_mprecision, std_mprecision = mean_std(mprecisions)
+    mean_mrecall, std_mrecall = mean_std(mrecalls)
 
     print(
         f'mIoU: {mean_miou:.4f} ± {std_miou:.4f}'
