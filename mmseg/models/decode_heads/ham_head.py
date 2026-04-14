@@ -81,16 +81,17 @@ class Matrix_Decomposition_2D_Base(nn.Module):
         D = C // self.S
         N = H * W
         x = x.view(B * self.S, D, N)
-        if not self.rand_init and not hasattr(self, 'bases'):
-            bases = self._build_bases(1, self.S, D, self.R, device=x.device)
-            self.register_buffer('bases', bases)
+        # if not self.rand_init and not hasattr(self, 'bases'):
+        #     bases = self._build_bases(1, self.S, D, self.R, device=x.device)
+        #     self.register_buffer('bases', bases)
 
         # (S, D, R) -> (B * S, D, R)
-        if self.rand_init:
-            bases = self._build_bases(B, self.S, D, self.R, device=x.device)
-        else:
-            bases = self.bases.repeat(B, 1, 1)
+        # if self.rand_init:
+        #     bases = self._build_bases(B, self.S, D, self.R, device=x.device)
+        # else:
+        #     bases = self.bases.repeat(B, 1, 1)
 
+        bases = self._build_bases(B, self.S, D, self.R, device=x.device)
         bases, coef = self.local_inference(x, bases)
 
         # (B * S, N, R)
@@ -120,7 +121,11 @@ class NMF2D(Matrix_Decomposition_2D_Base):
         """Build bases in initialization."""
         if device is None:
             device = get_device()
-        bases = torch.rand((B * S, D, R)).to(device)
+
+        if self.rand_init:
+            bases = torch.rand((B * S, D, R)).to(device)
+        else:
+            bases = torch.ones((B * S, D, R)).to(device)
         bases = F.normalize(bases, dim=1)
 
         return bases
@@ -226,23 +231,25 @@ class CustomHamburger(nn.Module):
 
     Args:
         ham_channels (int): Input and output channels of feature.
+        r (int): reduce channels to r.
         ham_kwargs (dict): Config of matrix decomposition module.
         norm_cfg (dict | None): Config of norm layers.
     """
 
     def __init__(self,
                  ham_channels=512,
+                 r=64,
                  ham_kwargs=dict(),
                  norm_cfg=None):
         super().__init__()
 
         self.ham_in = ConvModule(
-            ham_channels, ham_channels, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=None, act_cfg=None)
+            ham_channels, r, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=None, act_cfg=None)
 
         self.ham = NMF(ham_kwargs)
 
         self.ham_out = ConvModule(
-            ham_channels, ham_channels, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=norm_cfg, act_cfg=None)
+            r, ham_channels, 1,conv_cfg=dict(type='Conv1d'), norm_cfg=norm_cfg, act_cfg=None)
 
     def forward(self, x):
         # print('aaaa ', x.shape)
