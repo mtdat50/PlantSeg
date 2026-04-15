@@ -83,7 +83,7 @@ def trigger_visualization_hook(cfg, args):
 
 def mean_std(values):
     mean = sum(values) / len(values)
-    std = (sum((x - mean) ** 2 for x in values) / len(values - 1))**0.5
+    std = (sum((x - mean) ** 2 for x in values) / (len(values) - 1))**0.5
     return mean, std
 
 
