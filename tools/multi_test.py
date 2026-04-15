@@ -88,7 +88,7 @@ def mean_std(values):
 
 
 def main():
-    seeds = [2**i for i in range(10)]
+    # seeds = [2**i for i in range(20)]
     # set_random_seed(random_seed, deterministic=False)
 
     args = parse_args()
@@ -124,7 +124,7 @@ def main():
         cfg.test_evaluator['keep_results'] = True
 
 
-    seeds = [2**i for i in range(10)]
+    seeds = [2**i for i in range(20)]
 
     mious = []
     mdices = []
