@@ -11,8 +11,8 @@ ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 model = dict(
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', ignore_index=0, loss_weight=1),
-           # dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1, class_weight=[0.1, 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], avg_non_ignore=True)
+            # dict(type='DiceLoss', ignore_index=0, loss_weight=1),
+           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1, class_weight=[1.09, 8.11, 8.9, 6.77, 12.36, 4.85, 6.69, 8.12, 7.1], avg_non_ignore=True)
         ],
         ignore_index=255
     ),
