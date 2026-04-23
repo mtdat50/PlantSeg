@@ -14,6 +14,33 @@ from .base import BaseSegmentor
 
 
 @MODELS.register_module()
+class ClsHead(nn.Module):
+    """Classification head for encoder decoder segmentor.
+
+    Args:
+        in_channels (int): The input channels of the classification head.
+        num_classes (int): The number of classes.
+    """
+
+    def __init__(self, in_channels: int, num_classes: int):
+        super().__init__()
+
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(in_channels, num_classes)
+
+    def forward(self, inputs: Tensor) -> Tensor:
+        """The forward function of classification head.
+
+        Args:
+            inputs (Tensor): The input features with shape (B, C, H, W).
+
+        Returns:
+            Tensor: The output of classification head with shape (B, num_classes).
+        """
+        return self.fc(inputs)
+
+
+@MODELS.register_module()
 class EncoderDecoder(BaseSegmentor):
     """Encoder Decoder segmentors.
 
@@ -362,3 +389,55 @@ class EncoderDecoder(BaseSegmentor):
         # unravel batch dim
         seg_pred = list(seg_pred)
         return seg_pred
+
+
+@MODELS.register_module()
+class EncoderDecoderWithCls(EncoderDecoder):
+    def __init__(self, cls_head, cls_loss_weight=0.3, **kwargs):
+        super().__init__(**kwargs)
+
+        self.cls_head = MODELS.build(cls_head)
+        self.cls_loss_weight = cls_loss_weight
+
+        # choose depending on your setup
+        self.loss_cls = nn.CrossEntropyLoss()
+        # or:
+        # self.loss_cls = nn.BCEWithLogitsLoss()
+
+    def loss(self, inputs, data_samples):
+        """
+        inputs: Tensor (B, C, H, W)
+        data_samples: list[SegDataSample]
+        """
+
+        # 1. extract features (same as base class)
+        x = self.extract_feat(inputs)
+
+        losses = dict()
+
+        # 2. segmentation loss (reuse built-in logic)
+        loss_decode = self._decode_head_forward_train(x, data_samples)
+        losses.update(loss_decode)
+
+        if self.with_auxiliary_head:
+            loss_aux = self._auxiliary_head_forward_train(x, data_samples)
+            losses.update(loss_aux)
+
+        # 3. classification loss (NEW)
+        # --------------------------------
+
+        # collect labels from data_samples
+        # assumes each sample has gt_label
+
+        if hasattr(data_samples[0], 'gt_label'):
+            # gt_label = torch.stack([s.gt_label for s in data_samples]).to(inputs.device)
+            gt_label = [sample.gt_sem_seg.data.view(B, -1).max(dim=1)[0] for sample in data_samples]
+
+            # use last feature (C4)
+            cls_logits = self.cls_head(x[-1])
+
+            loss_cls = self.loss_cls(cls_logits, gt_label)
+
+            losses['loss_cls'] = self.cls_loss_weight * loss_cls
+
+        return losses
