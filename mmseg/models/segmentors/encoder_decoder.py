@@ -433,7 +433,8 @@ class EncoderDecoderWithCls(EncoderDecoder):
         labels = torch.stack(labels)
 
         cls_logits = self.cls_head(x[-1])
-        loss_cls = self.loss_cls(cls_logits, labels)
+        probs = torch.softmax(cls_logits, dim=1)
+        loss_cls = self.loss_cls(probs, labels)
         losses['loss_cls'] = self.cls_loss_weight * loss_cls
 
         return losses
