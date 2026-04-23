@@ -15,10 +15,10 @@ model = dict(
         in_channels=256,   # depends on backbone
         num_classes=9
     ),
-    cls_loss_weight=0.5,
+    cls_loss_weight=0.7,
     decode_head=dict(
         loss_decode=[
-           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.5, avg_non_ignore=True)
+           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.3, avg_non_ignore=True)
         ],
         ignore_index=255
     ),
