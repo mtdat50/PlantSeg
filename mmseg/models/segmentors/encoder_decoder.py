@@ -2,6 +2,7 @@
 import logging
 from typing import List, Optional
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmengine.logging import print_log
@@ -37,7 +38,8 @@ class ClsHead(nn.Module):
         Returns:
             Tensor: The output of classification head with shape (B, num_classes).
         """
-        return self.fc(inputs)
+        feat = self.pool(inputs).squeeze(-1).squeeze(-1)
+        return self.fc(feat)
 
 
 @MODELS.register_module()
@@ -426,18 +428,12 @@ class EncoderDecoderWithCls(EncoderDecoder):
         # 3. classification loss (NEW)
         # --------------------------------
 
-        # collect labels from data_samples
-        # assumes each sample has gt_label
+        labels = [sample.gt_sem_seg.data.unique() for sample in data_samples]
+        labels = [label[label != 255].max() for label in labels]  # remove ignore index, get label
+        labels = torch.stack(labels)
 
-        if hasattr(data_samples[0], 'gt_label'):
-            # gt_label = torch.stack([s.gt_label for s in data_samples]).to(inputs.device)
-            gt_label = [sample.gt_sem_seg.data.view(B, -1).max(dim=1)[0] for sample in data_samples]
-
-            # use last feature (C4)
-            cls_logits = self.cls_head(x[-1])
-
-            loss_cls = self.loss_cls(cls_logits, gt_label)
-
-            losses['loss_cls'] = self.cls_loss_weight * loss_cls
+        cls_logits = self.cls_head(x[-1])
+        loss_cls = self.loss_cls(cls_logits, labels)
+        losses['loss_cls'] = self.cls_loss_weight * loss_cls
 
         return losses
