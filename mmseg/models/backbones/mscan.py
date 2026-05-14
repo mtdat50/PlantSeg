@@ -7,6 +7,7 @@ import warnings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.ops import SqueezeExcitation
 from mmcv.cnn import build_activation_layer, build_norm_layer
 from mmcv.cnn.bricks import DropPath
 from mmengine.model import BaseModule
@@ -456,6 +457,32 @@ class CAM(nn.Module):
         return output
 
 
+class eca_layer(nn.Module):
+    """Constructs a ECA module.
+
+    Args:
+        channel: Number of channels of the input feature map
+        k_size: Adaptive selection of kernel size
+    """
+    def __init__(self, k_size=3):
+        super(eca_layer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # feature descriptor on the global spatial information
+        y = self.avg_pool(x)
+
+        # Two different branches of ECA module
+        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+
+        # Multi-scale information fusion
+        y = self.sigmoid(y)
+
+        return x * y.expand_as(x)
+
+
 class MSCABlockWithChannelAttention(BaseModule):
     def __init__(self,
                  channels,
@@ -483,6 +510,12 @@ class MSCABlockWithChannelAttention(BaseModule):
                 self.reduce = nn.Linear(self.input_size ** 2, 64)
                 self.channel_attention = nn.MultiheadAttention(64, num_heads=8, batch_first=True)
                 self.expand = nn.Linear(64, self.input_size ** 2)
+            case 'SE':
+                self.channel_attention = SqueezeExcitation(channels, channels // 16)
+            case 'ECA':
+                t = (math.log2(channels) + 1) / 2
+                k = t if t % 2 else t + 1
+                self.channel_attention = eca_layer(k_size=int(k))
             case _:
                 self.channel_attention = nn.Identity()
 
@@ -530,9 +563,17 @@ class MSCABlockWithChannelAttention(BaseModule):
             x = x.view(B, C, H, W) + self.drop_path(
                 self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
             )
+        elif self.channel_attention_type == 'SE':
+            normed_x = self.norm0(x)
+            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
+            x = x.view(B, C, H, W)
         else:
             normed_x = self.norm0(x)
-            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1) * self.channel_attention(normed_x))
+            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x))
             x = x.view(B, C, H, W)
 
         x = x + self.drop_path(
