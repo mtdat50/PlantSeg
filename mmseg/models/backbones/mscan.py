@@ -513,7 +513,7 @@ class MSCABlockWithChannelAttention(BaseModule):
             case 'SE':
                 self.channel_attention = SqueezeExcitation(channels, channels // 16)
             case 'ECA':
-                t = (math.log2(channels) + 1) / 2
+                t = (math.log2(channels) + 1) // 2
                 k = t if t % 2 else t + 1
                 self.channel_attention = eca_layer(k_size=int(k))
             case _:
@@ -563,7 +563,7 @@ class MSCABlockWithChannelAttention(BaseModule):
             x = x.view(B, C, H, W) + self.drop_path(
                 self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
             )
-        elif self.channel_attention_type == 'SE':
+        elif self.channel_attention_type in ['SE', 'ECA']:
             normed_x = self.norm0(x)
             x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
                 *
