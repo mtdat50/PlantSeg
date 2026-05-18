@@ -1,6 +1,3 @@
-# import torch
-
-
 _base_ = [
     'segnext_mscan-t_10k_plantsegwheat.py'
 ]
