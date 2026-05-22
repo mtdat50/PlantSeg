@@ -137,10 +137,10 @@ def main():
     mean_mrecall, std_mrecall = mean_std(mrecalls)
 
     print(
-        f'mIoU: {mean_miou:.4f} ± {std_miou:.4f}'
-        f'mDice: {mean_mdice:.4f} ± {std_mdice:.4f}'
-        f'mPrecision: {mean_mprecision:.4f} ± {std_mprecision:.4f}'
-        f'mRecall: {mean_mrecall:.4f} ± {std_mrecall:.4f}'
+        f'mIoU: {mean_miou:.2f} ± {std_miou:.2f}'
+        f'mDice: {mean_mdice:.2f} ± {std_mdice:.2f}'
+        f'mPrecision: {mean_mprecision:.2f} ± {std_mprecision:.2f}'
+        f'mRecall: {mean_mrecall:.2f} ± {std_mrecall:.2f}'
     )
 
 
