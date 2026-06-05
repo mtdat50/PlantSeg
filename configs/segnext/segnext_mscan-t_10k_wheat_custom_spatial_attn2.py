@@ -4,7 +4,8 @@ _base_ = [
 # model settings
 model = dict(
     backbone=dict(
-        type='MSCANWithCustomSpatialAttention2',
+        type='MSCANWithCustomSpatialAttention',
+        custom_version=2
     ),
 )
 

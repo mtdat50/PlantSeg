@@ -5,7 +5,7 @@ _base_ = [
 model = dict(
     backbone=dict(
         type='MSCANWithCustomSpatialAttention',
-        custom_version=2
+        custom_version=3
     ),
 )
 

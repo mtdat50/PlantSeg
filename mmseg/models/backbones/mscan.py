@@ -192,10 +192,10 @@ class CustomMSCAAttention(BaseModule):
     def __init__(self, channels):
         super().__init__()
         self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;9
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;15
-        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;21
-        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7;27
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #9
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #15
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #21
+        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #27
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
 
@@ -234,6 +234,38 @@ class CustomMSCAAttention2(CustomMSCAAttention):
         attn4 = self.conv4(attn3) + attn3
 
         attn = attn1 + attn2 + attn3 + attn4
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
+class CustomMSCAAttention3(BaseModule):
+    """Max dilation
+
+    Args:
+        channels (int): The dimension of channels.
+    """
+
+    def __init__(self, channels):
+        super().__init__()
+        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #9
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=9, dilation=9, groups=channels) #27
+        self.channel_mixing = nn.Conv2d(channels, channels, 1)
+
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0) + attn0
+        attn2 = self.conv2(attn1) + attn1
+
+        attn = attn0 + attn1 + attn2
         attn = self.channel_mixing(attn)
 
         # Convolutional Attention
@@ -284,17 +316,18 @@ class MSCASpatialAttention(BaseModule):
 
 class CustomMSCASpatialAttention(MSCASpatialAttention):
     def __init__(self,
+                 custom_version,
                  in_channels,
                  **kwargs):
         super().__init__(in_channels, **kwargs)
-        self.spatial_gating_unit = CustomMSCAAttention(in_channels)
 
-class CustomMSCASpatialAttention2(MSCASpatialAttention):
-    def __init__(self,
-                 in_channels,
-                 **kwargs):
-        super().__init__(in_channels, **kwargs)
-        self.spatial_gating_unit = CustomMSCAAttention2(in_channels)
+        match custom_version:
+            case 1:
+                self.spatial_gating_unit = CustomMSCAAttention(in_channels)
+            case 2:
+                self.spatial_gating_unit = CustomMSCAAttention2(in_channels)
+            case 3:
+                self.spatial_gating_unit = CustomMSCAAttention3(in_channels)
 
 
 class AttentionModule(BaseModule):
@@ -413,17 +446,10 @@ class MSCABlock(BaseModule):
 
 
 class MSCABlockWithCustomSpatialAttention(MSCABlock):
-    def __init__(self, **kwargs):
+    def __init__(self, custom_version=1, **kwargs):
         super().__init__(**kwargs)
         self.attn = CustomMSCASpatialAttention(
-            kwargs['channels'],
-            act_cfg=kwargs['act_cfg']
-        )
-
-class MSCABlockWithCustomSpatialAttention2(MSCABlock):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.attn = CustomMSCASpatialAttention2(
+            custom_version,
             kwargs['channels'],
             act_cfg=kwargs['act_cfg']
         )
@@ -822,7 +848,7 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
                  init_cfg=None,
-                 skip_connections_in_spatial_attn=False):
+                 custom_version=1):
         super().__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
@@ -854,26 +880,16 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                     norm_cfg=norm_cfg)
 
 
-            if skip_connections_in_spatial_attn:
-                block = nn.ModuleList([
-                    MSCABlockWithCustomSpatialAttention2(
-                        channels=embed_dims[i],
-                        mlp_ratio=mlp_ratios[i],
-                        drop=drop_rate,
-                        drop_path=dpr[cur + j],
-                        act_cfg=act_cfg,
-                        norm_cfg=norm_cfg) for j in range(depths[i])
-                ])
-            else:
-                block = nn.ModuleList([
-                    MSCABlockWithCustomSpatialAttention(
-                        channels=embed_dims[i],
-                        mlp_ratio=mlp_ratios[i],
-                        drop=drop_rate,
-                        drop_path=dpr[cur + j],
-                        act_cfg=act_cfg,
-                        norm_cfg=norm_cfg) for j in range(depths[i])
-                ])
+            block = nn.ModuleList([
+                MSCABlockWithCustomSpatialAttention(
+                    custom_version=custom_version,
+                    channels=embed_dims[i],
+                    mlp_ratio=mlp_ratios[i],
+                    drop=drop_rate,
+                    drop_path=dpr[cur + j],
+                    act_cfg=act_cfg,
+                    norm_cfg=norm_cfg) for j in range(depths[i])
+            ])
 
             norm = nn.LayerNorm(embed_dims[i])
             cur += depths[i]
@@ -882,11 +898,6 @@ class MSCANWithCustomSpatialAttention(MSCAN):
             setattr(self, f'block{i + 1}', block)
             setattr(self, f'norm{i + 1}', norm)
 
-
-@MODELS.register_module()
-class MSCANWithCustomSpatialAttention2(MSCANWithCustomSpatialAttention):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, skip_connections_in_spatial_attn=True)
 
 
 @MODELS.register_module()

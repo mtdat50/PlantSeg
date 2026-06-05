@@ -1,11 +1,11 @@
 _base_ = [
-    'segnext_mscan-t_10k_rice.py'
+    'segnext_mscan-t_10k_plantsegwheat.py'
 ]
 # model settings
 model = dict(
     backbone=dict(
         type='MSCANWithCustomSpatialAttention',
-        custom_version=2
+        custom_version=3
     ),
 )
 
