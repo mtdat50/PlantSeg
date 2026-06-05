@@ -217,6 +217,31 @@ class CustomMSCAAttention(BaseModule):
         return out
 
 
+class CustomMSCAAttention2(CustomMSCAAttention):
+    """ With skip connections between the multi-scale feature extraction layers
+
+    Args:
+        channels (int): The dimension of channels.
+    """
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn1 = self.conv1(self.conv0(x))
+        attn2 = self.conv2(attn1) + attn1
+        attn3 = self.conv3(attn2) + attn2
+        attn4 = self.conv4(attn3) + attn3
+
+        attn = attn1 + attn2 + attn3 + attn4
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -263,6 +288,14 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                  **kwargs):
         super().__init__(in_channels, **kwargs)
         self.spatial_gating_unit = CustomMSCAAttention(in_channels)
+
+class CustomMSCASpatialAttention2(MSCASpatialAttention):
+    def __init__(self,
+                 in_channels,
+                 **kwargs):
+        super().__init__(in_channels, **kwargs)
+        self.spatial_gating_unit = CustomMSCAAttention2(in_channels)
+
 
 class AttentionModule(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
@@ -384,8 +417,14 @@ class MSCABlockWithCustomSpatialAttention(MSCABlock):
         super().__init__(**kwargs)
         self.attn = CustomMSCASpatialAttention(
             kwargs['channels'],
-            attention_kernel_sizes=kwargs['attention_kernel_sizes'],
-            attention_kernel_paddings=kwargs['attention_kernel_paddings'],
+            act_cfg=kwargs['act_cfg']
+        )
+
+class MSCABlockWithCustomSpatialAttention2(MSCABlock):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.attn = CustomMSCASpatialAttention2(
+            kwargs['channels'],
             act_cfg=kwargs['act_cfg']
         )
 
@@ -782,7 +821,8 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
-                 init_cfg=None):
+                 init_cfg=None,
+                 skip_connections_in_spatial_attn=False):
         super().__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
@@ -813,23 +853,40 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                     embed_dim=embed_dims[i],
                     norm_cfg=norm_cfg)
 
-            block = nn.ModuleList([
-                MSCABlockWithCustomSpatialAttention(
-                    channels=embed_dims[i],
-                    attention_kernel_sizes=attention_kernel_sizes,
-                    attention_kernel_paddings=attention_kernel_paddings,
-                    mlp_ratio=mlp_ratios[i],
-                    drop=drop_rate,
-                    drop_path=dpr[cur + j],
-                    act_cfg=act_cfg,
-                    norm_cfg=norm_cfg) for j in range(depths[i])
-            ])
+
+            if skip_connections_in_spatial_attn:
+                block = nn.ModuleList([
+                    MSCABlockWithCustomSpatialAttention2(
+                        channels=embed_dims[i],
+                        mlp_ratio=mlp_ratios[i],
+                        drop=drop_rate,
+                        drop_path=dpr[cur + j],
+                        act_cfg=act_cfg,
+                        norm_cfg=norm_cfg) for j in range(depths[i])
+                ])
+            else:
+                block = nn.ModuleList([
+                    MSCABlockWithCustomSpatialAttention(
+                        channels=embed_dims[i],
+                        mlp_ratio=mlp_ratios[i],
+                        drop=drop_rate,
+                        drop_path=dpr[cur + j],
+                        act_cfg=act_cfg,
+                        norm_cfg=norm_cfg) for j in range(depths[i])
+                ])
+
             norm = nn.LayerNorm(embed_dims[i])
             cur += depths[i]
 
             setattr(self, f'patch_embed{i + 1}', patch_embed)
             setattr(self, f'block{i + 1}', block)
             setattr(self, f'norm{i + 1}', norm)
+
+
+@MODELS.register_module()
+class MSCANWithCustomSpatialAttention2(MSCANWithCustomSpatialAttention):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, skip_connections_in_spatial_attn=True)
 
 
 @MODELS.register_module()
