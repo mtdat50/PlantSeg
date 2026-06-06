@@ -228,10 +228,14 @@ class CustomMSCAAttention2(CustomMSCAAttention):
         u = x.clone()
 
         # Multi-Scale Feature extraction
-        attn1 = self.conv1(self.conv0(x))
-        attn2 = self.conv2(attn1)
-        attn3 = self.conv3(attn1 + attn2)
-        attn4 = self.conv4(attn1 + attn2 + attn3)
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
+        sum2 = attn2 + attn1
+        attn3 = self.conv3(sum2)
+        sum3 = attn3 + sum2
+        attn4 = self.conv4(sum3)
 
         attn = attn1 + attn2 + attn3 + attn4
         attn = self.channel_mixing(attn)
@@ -263,7 +267,8 @@ class CustomMSCAAttention3(BaseModule):
         # Multi-Scale Feature extraction
         attn0 = self.conv0(x)
         attn1 = self.conv1(attn0)
-        attn2 = self.conv2(attn0 + attn1)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
 
         attn = attn0 + attn1 + attn2
         attn = self.channel_mixing(attn)
