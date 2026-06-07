@@ -397,7 +397,7 @@ class CustomMSCAAttention6(BaseModule):
                         tuple(i_kernel),
                         padding=i_pad,
                         groups=channels))
-        self.weight = nn.Parameter(torch.ones(3))
+        self.weight = nn.Parameter(torch.ones(4))
         self.conv3 = nn.Conv2d(channels, channels, 1)
 
     def forward(self, x):
@@ -418,9 +418,10 @@ class CustomMSCAAttention6(BaseModule):
         attn_2 = self.conv2_2(attn_2)
 
         attn = (
-            self.weight[0] * attn_0 +
-            self.weight[1] * attn_1 +
-            self.weight[2] * attn_2
+            self.weight[0] * attn +
+            self.weight[1] * attn_0 +
+            self.weight[2] * attn_1 +
+            self.weight[3] * attn_2
         )
         # Channel Mixing
         attn = self.conv3(attn)
