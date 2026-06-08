@@ -557,6 +557,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention6(in_channels)
             case 7:
                 self.spatial_gating_unit = CustomMSCAAttention7(in_channels)
+            case 8:
+                self.spatial_gating_unit = CustomMSCAAttention8(in_channels)
 
 
 class AttentionModule(BaseModule):
