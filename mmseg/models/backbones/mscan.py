@@ -484,21 +484,31 @@ class CustomMSCAAttention8(BaseModule):
         u = x.clone()
 
         # Multi-Scale Feature extraction
+        # attn0 = self.conv0(x)
+        # attn1 = self.conv1(attn0)
+        # sum1 = attn1 + attn0
+        # attn2 = self.conv2(sum1)
+        # sum2 = sum1 + attn2
+        # attn3 = self.conv3(sum2)
+        # sum3 = sum2 + attn3
+        # attn4 = self.conv4(sum3)
+
         attn0 = self.conv0(x)
         attn1 = self.conv1(attn0)
         sum1 = attn1 + attn0
         attn2 = self.conv2(sum1)
-        sum2 = sum1 + attn2
+        sum2 = attn2 + sum1
         attn3 = self.conv3(sum2)
-        sum3 = sum2 + attn3
+        sum3 = attn3 + sum2
         attn4 = self.conv4(sum3)
 
-        # attn = (
-        #     self.weight[1] * attn1 +
-        #     self.weight[2] * attn2 +
-        #     self.weight[3] * attn3
-        # )
-        attn = attn1 + attn2 + attn3 + attn4
+        attn = (
+            attn1 * self.weight[0] +
+            attn2 * self.weight[1] +
+            attn3 * self.weight[2] +
+            attn4 * self.weight[3]
+        )
+        # attn = attn1 + attn2 + attn3 + attn4
         attn = self.channel_mixing(attn)
 
         # Convolutional Attention
