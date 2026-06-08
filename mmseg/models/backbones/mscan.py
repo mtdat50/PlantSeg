@@ -491,8 +491,9 @@ class CustomMSCAAttention8(BaseModule):
         attn4 = self.conv4(sum3)
 
         attn = (
+            self.weight[1] * attn1 +
             self.weight[2] * attn2 +
-            self.weight[3] * attn3 
+            self.weight[3] * attn3
         )
         attn = self.channel_mixing(attn)
 
