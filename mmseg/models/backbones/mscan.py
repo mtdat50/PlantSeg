@@ -468,10 +468,12 @@ class CustomMSCAAttention8(BaseModule):
 
     def __init__(self, channels):
         super().__init__()
-        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', groups=channels) #3
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=1, groups=channels) #5, 7
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=3, groups=channels) #9, 15
-        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=5, groups=channels) #13, 27
+        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=2, dilation=2, groups=channels) #5, 7
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=4, dilation=4, groups=channels) #9, 15
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=6, dilation=6, groups=channels) #13, 27
+        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=10, dilation=10, groups=channels) #21, 47
+        self.weight = nn.Parameter(torch.ones(5))
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
 
@@ -483,10 +485,16 @@ class CustomMSCAAttention8(BaseModule):
         attn1 = self.conv1(attn0)
         sum1 = attn1 + attn0
         attn2 = self.conv2(sum1)
-        sum2 = sum1 + attn1
+        sum2 = sum1 + attn2
         attn3 = self.conv3(sum2)
+        sum3 = sum2 + attn3
+        attn4 = self.conv4(sum3)
 
-        attn = attn0 + attn1 + attn2 + attn3
+        attn = (
+            self.weight[2] * attn2 +
+            self.weight[3] * attn3 +
+            self.weight[4] * attn4
+        )
         attn = self.channel_mixing(attn)
 
         # Convolutional Attention
