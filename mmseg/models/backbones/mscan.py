@@ -418,8 +418,6 @@ class CustomMSCAAttention6(BaseModule):
         attn_2 = self.conv2_2(attn_2)
 
         attn = (
-            self.weight[0] * attn +
-            self.weight[1] * attn_0 +
             self.weight[2] * attn_1 +
             self.weight[3] * attn_2
         )
