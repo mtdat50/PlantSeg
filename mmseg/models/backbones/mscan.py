@@ -418,8 +418,9 @@ class CustomMSCAAttention6(BaseModule):
         attn_2 = self.conv2_2(attn_2)
 
         attn = (
-            self.weight[2] * attn_1 +
-            self.weight[3] * attn_2
+            self.weight[0] * attn +
+            self.weight[1] * attn_0 +
+            self.weight[2] * attn_1 
         )
         # Channel Mixing
         attn = self.conv3(attn)
@@ -457,6 +458,41 @@ class CustomMSCAAttention7(CustomMSCAAttention):
 
         return out
 
+
+class CustomMSCAAttention8(BaseModule):
+    """half dilation
+
+    Args:
+        channels (int): The dimension of channels.
+    """
+
+    def __init__(self, channels):
+        super().__init__()
+        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', groups=channels) #3
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=1, groups=channels) #5, 7
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=3, groups=channels) #9, 15
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding='same', dilation=5, groups=channels) #13, 27
+        self.channel_mixing = nn.Conv2d(channels, channels, 1)
+
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
+        sum2 = sum1 + attn1
+        attn3 = self.conv3(sum2)
+
+        attn = attn0 + attn1 + attn2 + attn3
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
 
 
 class MSCASpatialAttention(BaseModule):
