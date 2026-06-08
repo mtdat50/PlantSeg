@@ -490,11 +490,12 @@ class CustomMSCAAttention8(BaseModule):
         sum2 = sum1 + attn2
         attn3 = self.conv3(sum2)
 
-        attn = (
-            self.weight[1] * attn1 +
-            self.weight[2] * attn2 +
-            self.weight[3] * attn3
-        )
+        # attn = (
+        #     self.weight[1] * attn1 +
+        #     self.weight[2] * attn2 +
+        #     self.weight[3] * attn3
+        # )
+        attn = attn1 + attn2 + attn3
         attn = self.channel_mixing(attn)
 
         # Convolutional Attention
