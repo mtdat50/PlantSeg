@@ -472,8 +472,7 @@ class CustomMSCAAttention8(BaseModule):
         self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=2, dilation=2, groups=channels) #5, 7
         self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=4, dilation=4, groups=channels) #9, 15
         self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=6, dilation=6, groups=channels) #13, 27
-        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=10, dilation=10, groups=channels) #21, 47
-        self.weight = nn.Parameter(torch.ones(5))
+        self.weight = nn.Parameter(torch.ones(4))
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
 
@@ -487,8 +486,6 @@ class CustomMSCAAttention8(BaseModule):
         attn2 = self.conv2(sum1)
         sum2 = sum1 + attn2
         attn3 = self.conv3(sum2)
-        sum3 = sum2 + attn3
-        attn4 = self.conv4(sum3)
 
         attn = (
             self.weight[1] * attn1 +
