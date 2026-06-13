@@ -542,6 +542,31 @@ class CustomMSCAAttention9(BaseModule):
 
         return out
 
+class CustomMSCAAttention10(CustomMSCAAttention8):
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        attn2 = self.conv2(attn1)
+        attn3 = self.conv3(attn2)
+        attn4 = self.conv4(attn3)
+
+        attn = (
+            self.weight[0] * attn1 +
+            self.weight[1] * attn2 +
+            self.weight[2] * attn3 +
+            self.weight[3] * attn4
+        )
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -608,6 +633,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention8(in_channels)
             case 9:
                 self.spatial_gating_unit = CustomMSCAAttention9(in_channels)
+            case 10:
+                self.spatial_gating_unit = CustomMSCAAttention10(in_channels)
 
 
 class AttentionModule(BaseModule):
