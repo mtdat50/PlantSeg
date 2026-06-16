@@ -8,7 +8,7 @@ model = dict(
         type='MSCANWithCustomSpatialAttention',
         embed_dims=embed_dims,
         hidden_embed_dims=[int(x * 2) for x in embed_dims],
-        mlp_ratios=[4, 4, 3, 3],
+        mlp_ratios=[6, 5, 2, 2],
         custom_version=8
     ),
 )
