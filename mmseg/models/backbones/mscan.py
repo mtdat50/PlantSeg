@@ -687,6 +687,70 @@ class CustomMSCAAttention13(CustomMSCAAttention8):
         return out
 
 
+class CustomMSCAAttention15(MSCAAttention):
+    def __init__(self, channels):
+        super().__init__(channels)
+        self.gap = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten()
+        )
+        self.weighting = nn.Sequential(
+            nn.Conv1d(1, 1, channels // 4, stride=channels // 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(16, 4),
+            nn.Softmax(dim=-1)
+        )
+
+
+    def forward(self, x):
+        """Forward function."""
+
+        u = x.clone()
+
+        attn = self.conv0(x)
+
+        # Multi-Scale Feature extraction
+        attn_0 = self.conv0_1(attn)
+        attn_0 = self.conv0_2(attn_0)
+
+        attn_1 = self.conv1_1(attn)
+        attn_1 = self.conv1_2(attn_1)
+
+        attn_2 = self.conv2_1(attn)
+        attn_2 = self.conv2_2(attn_2)
+
+        # attn = attn + attn_0 + attn_1 + attn_2
+        pooled = torch.cat([self.gap(attn), self.gap(attn_0), self.gap(attn_1), self.gap(attn_2)], dim=1)
+        weights = self.weighting(pooled)
+        attn = (
+            weights[:, 0].view(-1, 1, 1, 1) * attn +
+            weights[:, 1].view(-1, 1, 1, 1) * attn_0 +
+            weights[:, 2].view(-1, 1, 1, 1) * attn_1 +
+            weights[:, 3].view(-1, 1, 1, 1) * attn_2
+        )
+
+        # Channel Mixing
+        attn = self.conv3(attn)
+
+        # Convolutional Attention
+        x = attn * u
+
+        return x
+
+
+class BranchAttention(nn.Module):
+    def __init__(self, channels, hidden_dim, nof_kernels):
+        super().__init__()
+        self.global_pooling = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten())
+        self.to_scores = nn.Sequential(nn.Linear(c_dim, hidden_dim),
+                                       nn.ReLU(inplace=True),
+                                       nn.Linear(hidden_dim, nof_kernels))
+
+    def forward(self, x, temperature=1):
+        out = self.global_pooling(x)
+        scores = self.to_scores(out)
+        return F.softmax(scores / temperature, dim=-1)
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -765,6 +829,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention12(hidden_channels)
             case 13:
                 self.spatial_gating_unit = CustomMSCAAttention13(hidden_channels)
+            case 15:
+                self.spatial_gating_unit = CustomMSCAAttention15(hidden_channels)
 
 
 class AttentionModule(BaseModule):
