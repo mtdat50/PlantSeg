@@ -696,9 +696,9 @@ class CustomMSCAAttention15(MSCAAttention):
             nn.Unflatten(1, (1, channels))
         )
         self.weighting = nn.Sequential(
-            nn.Conv1d(1, 1, channels // 4, stride=channels // 4),
+            nn.Conv1d(1, 1, channels // 4, padding=channels // 8 - 1, stride=channels // 4),
             nn.ReLU(inplace=True),
-            nn.Linear(16, 4),
+            nn.Linear(16 + (channels % 4 != 0), 4),
             nn.Softmax(dim=-1)
         )
 
@@ -744,19 +744,6 @@ class CustomMSCAAttention15(MSCAAttention):
         return x
 
 
-class BranchAttention(nn.Module):
-    def __init__(self, channels, hidden_dim, nof_kernels):
-        super().__init__()
-        self.global_pooling = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten())
-        self.to_scores = nn.Sequential(nn.Linear(c_dim, hidden_dim),
-                                       nn.ReLU(inplace=True),
-                                       nn.Linear(hidden_dim, nof_kernels))
-
-    def forward(self, x, temperature=1):
-        out = self.global_pooling(x)
-        scores = self.to_scores(out)
-        return F.softmax(scores / temperature, dim=-1)
-
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -781,6 +768,9 @@ class MSCASpatialAttention(BaseModule):
         super().__init__()
         if hidden_channels is None:
             hidden_channels = in_channels
+        # print("MSCASpatialAttention", end=', ')
+        # print("in channels", in_channels, end=', ')
+        # print("hidden channels", hidden_channels)
         self.proj_1 = nn.Conv2d(in_channels, hidden_channels, 1)
         self.activation = build_activation_layer(act_cfg)
         self.spatial_gating_unit = MSCAAttention(hidden_channels,
@@ -1348,7 +1338,7 @@ class MSCANWithCustomSpatialAttention(MSCAN):
     def __init__(self,
                  in_channels=3,
                  embed_dims=[64, 128, 256, 512],
-                 hidden_embed_dims=[64, 128, 256, 512],
+                 hidden_embed_dims=None,
                  mlp_ratios=[4, 4, 4, 4],
                  drop_rate=0.,
                  drop_path_rate=0.,
@@ -1380,6 +1370,8 @@ class MSCANWithCustomSpatialAttention(MSCAN):
         ]  # stochastic depth decay rule
         cur = 0
 
+        if hidden_embed_dims is None:
+            hidden_embed_dims = embed_dims
         for i in range(num_stages):
             if i == 0:
                 patch_embed = StemConv(3, embed_dims[0], norm_cfg=norm_cfg)
@@ -1390,7 +1382,6 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                     in_channels=in_channels if i == 0 else embed_dims[i - 1],
                     embed_dim=embed_dims[i],
                     norm_cfg=norm_cfg)
-
 
             block = nn.ModuleList([
                 MSCABlockWithCustomSpatialAttention(
