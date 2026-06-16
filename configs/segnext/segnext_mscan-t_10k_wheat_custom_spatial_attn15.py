@@ -7,7 +7,6 @@ model = dict(
     backbone=dict(
         type='MSCANWithCustomSpatialAttention',
         embed_dims=embed_dims,
-        # hidden_embed_dims=[int(x) for x in embed_dims],
         custom_version=15
     ),
 )

@@ -696,12 +696,16 @@ class CustomMSCAAttention15(MSCAAttention):
             nn.Unflatten(1, (1, channels))
         )
         self.weighting = nn.Sequential(
-            nn.Conv1d(1, 1, channels // 4, padding=channels // 8 - 1, stride=channels // 4),
+            # nn.Conv1d(1, 1, channels // 4, padding=channels // 8 - 1, stride=channels // 4),
+            # nn.ReLU(inplace=True),
+            # nn.Linear(16 + (channels % 4 != 0), 4),
+            # nn.Softmax(dim=-1)
+            nn.Linear(channels * 4, channels // 4),
             nn.ReLU(inplace=True),
-            nn.Linear(16 + (channels % 4 != 0), 4),
+            # nn.Linear(16 + (channels % 4 != 0), 4),
+            nn.Linear(channels // 4, 4),
             nn.Softmax(dim=-1)
         )
-
 
     def forward(self, x):
         """Forward function."""
@@ -722,11 +726,6 @@ class CustomMSCAAttention15(MSCAAttention):
 
         # attn = attn + attn_0 + attn_1 + attn_2
         pooled = torch.cat([self.gap(attn), self.gap(attn_0), self.gap(attn_1), self.gap(attn_2)], dim=2)
-        # print(pooled.shape)
-        # print(self.gap(attn).shape)
-        # print(self.gap(attn_0).shape)
-        # print(self.gap(attn_1).shape)
-        # print(self.gap(attn_2).shape)
         weights = self.weighting(pooled)
         attn = (
             weights[:, 0, 0].view(-1, 1, 1, 1) * attn +
@@ -742,6 +741,61 @@ class CustomMSCAAttention15(MSCAAttention):
         x = attn * u
 
         return x
+
+
+class CustomMSCAAttention16(CustomMSCAAttention8):
+    def __init__(self, channels):
+        super().__init__(channels)
+        self.gap = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Unflatten(1, (1, channels))
+        )
+        self.weighting = nn.Sequential(
+            # nn.Conv1d(1, 1, channels // 4, padding=channels // 8 - 1, stride=channels // 4),
+            nn.Linear(channels * 4, channels // 4),
+            nn.ReLU(inplace=True),
+            # nn.Linear(16 + (channels % 4 != 0), 4),
+            nn.Linear(channels // 4, 4),
+            nn.Softmax(dim=-1)
+        )
+
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
+        sum2 = sum1 + attn2
+        attn3 = self.conv3(sum2)
+        sum3 = sum2 + attn3
+        attn4 = self.conv4(sum3)
+
+        pooled = torch.cat(
+            [
+                self.gap(attn1),
+                self.gap(attn2),
+                self.gap(attn3),
+                self.gap(attn4)
+            ],
+            dim=2
+        )
+        weights = self.weighting(pooled)
+        attn = (
+            weights[:, 0, 0].view(-1, 1, 1, 1) * attn1 +
+            weights[:, 0, 1].view(-1, 1, 1, 1) * attn2 +
+            weights[:, 0, 2].view(-1, 1, 1, 1) * attn3 +
+            weights[:, 0, 3].view(-1, 1, 1, 1) * attn4
+        )
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
 
 
 class MSCASpatialAttention(BaseModule):
@@ -827,6 +881,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention13(hidden_channels)
             case 15:
                 self.spatial_gating_unit = CustomMSCAAttention15(hidden_channels)
+            case 16:
+                self.spatial_gating_unit = CustomMSCAAttention16(hidden_channels)
 
 
 class AttentionModule(BaseModule):
