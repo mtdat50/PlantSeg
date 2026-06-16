@@ -704,16 +704,19 @@ class MSCASpatialAttention(BaseModule):
 
     def __init__(self,
                  in_channels,
+                 hidden_channels=None,
                  attention_kernel_sizes=[5, [1, 7], [1, 11], [1, 21]],
                  attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
                  act_cfg=dict(type='GELU')):
         super().__init__()
-        self.proj_1 = nn.Conv2d(in_channels, in_channels, 1)
+        if hidden_channels is None:
+            hidden_channels = in_channels
+        self.proj_1 = nn.Conv2d(in_channels, hidden_channels, 1)
         self.activation = build_activation_layer(act_cfg)
-        self.spatial_gating_unit = MSCAAttention(in_channels,
+        self.spatial_gating_unit = MSCAAttention(hidden_channels,
                                                  attention_kernel_sizes,
                                                  attention_kernel_paddings)
-        self.proj_2 = nn.Conv2d(in_channels, in_channels, 1)
+        self.proj_2 = nn.Conv2d(hidden_channels, in_channels, 1)
 
     def forward(self, x):
         """Forward function."""
@@ -731,36 +734,37 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
     def __init__(self,
                  custom_version,
                  in_channels,
+                 hidden_channels,
                  **kwargs):
-        super().__init__(in_channels, **kwargs)
+        super().__init__(in_channels, hidden_channels, **kwargs)
 
         match custom_version:
             case 1:
-                self.spatial_gating_unit = CustomMSCAAttention(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention(hidden_channels)
             case 2:
-                self.spatial_gating_unit = CustomMSCAAttention2(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention2(hidden_channels)
             case 3:
-                self.spatial_gating_unit = CustomMSCAAttention3(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention3(hidden_channels)
             case 4:
-                self.spatial_gating_unit = CustomMSCAAttention4(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention4(hidden_channels)
             case 5:
-                self.spatial_gating_unit = CustomMSCAAttention5(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention5(hidden_channels)
             case 6:
-                self.spatial_gating_unit = CustomMSCAAttention6(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention6(hidden_channels)
             case 7:
-                self.spatial_gating_unit = CustomMSCAAttention7(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention7(hidden_channels)
             case 8:
-                self.spatial_gating_unit = CustomMSCAAttention8(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention8(hidden_channels)
             case 9:
-                self.spatial_gating_unit = CustomMSCAAttention9(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention9(hidden_channels)
             case 10:
-                self.spatial_gating_unit = CustomMSCAAttention10(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention10(hidden_channels)
             case 11:
-                self.spatial_gating_unit = CustomMSCAAttention11(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention11(hidden_channels)
             case 12:
-                self.spatial_gating_unit = CustomMSCAAttention12(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention12(hidden_channels)
             case 13:
-                self.spatial_gating_unit = CustomMSCAAttention13(in_channels)
+                self.spatial_gating_unit = CustomMSCAAttention13(hidden_channels)
 
 
 class AttentionModule(BaseModule):
@@ -837,6 +841,7 @@ class MSCABlock(BaseModule):
 
     def __init__(self,
                  channels,
+                 hidden_channels=None,
                  attention_kernel_sizes=[5, [1, 7], [1, 11], [1, 21]],
                  attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
                  mlp_ratio=4.,
@@ -846,7 +851,7 @@ class MSCABlock(BaseModule):
                  norm_cfg=dict(type='SyncBN', requires_grad=True)):
         super().__init__()
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
-        self.attn = MSCASpatialAttention(channels, attention_kernel_sizes,
+        self.attn = MSCASpatialAttention(channels, channels, attention_kernel_sizes,
                                          attention_kernel_paddings, act_cfg)
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()
@@ -884,6 +889,7 @@ class MSCABlockWithCustomSpatialAttention(MSCABlock):
         self.attn = CustomMSCASpatialAttention(
             custom_version,
             kwargs['channels'],
+            kwargs['hidden_channels'],
             act_cfg=kwargs['act_cfg']
         )
 
@@ -1019,7 +1025,7 @@ class MSCABlockWithChannelAttention(BaseModule):
 
 
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
-        self.attn = MSCASpatialAttention(channels, attention_kernel_sizes,
+        self.attn = MSCASpatialAttention(channels, channels, attention_kernel_sizes,
                                          attention_kernel_paddings, act_cfg)
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()
@@ -1270,6 +1276,7 @@ class MSCANWithCustomSpatialAttention(MSCAN):
     def __init__(self,
                  in_channels=3,
                  embed_dims=[64, 128, 256, 512],
+                 hidden_embed_dims=[64, 128, 256, 512],
                  mlp_ratios=[4, 4, 4, 4],
                  drop_rate=0.,
                  drop_path_rate=0.,
@@ -1317,6 +1324,7 @@ class MSCANWithCustomSpatialAttention(MSCAN):
                 MSCABlockWithCustomSpatialAttention(
                     custom_version=custom_version,
                     channels=embed_dims[i],
+                    hidden_channels=hidden_embed_dims[i],
                     mlp_ratio=mlp_ratios[i],
                     drop=drop_rate,
                     drop_path=dpr[cur + j],
