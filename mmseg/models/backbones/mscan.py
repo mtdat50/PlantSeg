@@ -692,7 +692,8 @@ class CustomMSCAAttention15(MSCAAttention):
         super().__init__(channels)
         self.gap = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Flatten()
+            nn.Flatten(),
+            nn.Unflatten(1, (1, channels))
         )
         self.weighting = nn.Sequential(
             nn.Conv1d(1, 1, channels // 4, stride=channels // 4),
@@ -720,13 +721,18 @@ class CustomMSCAAttention15(MSCAAttention):
         attn_2 = self.conv2_2(attn_2)
 
         # attn = attn + attn_0 + attn_1 + attn_2
-        pooled = torch.cat([self.gap(attn), self.gap(attn_0), self.gap(attn_1), self.gap(attn_2)], dim=1)
+        pooled = torch.cat([self.gap(attn), self.gap(attn_0), self.gap(attn_1), self.gap(attn_2)], dim=2)
+        # print(pooled.shape)
+        # print(self.gap(attn).shape)
+        # print(self.gap(attn_0).shape)
+        # print(self.gap(attn_1).shape)
+        # print(self.gap(attn_2).shape)
         weights = self.weighting(pooled)
         attn = (
-            weights[:, 0].view(-1, 1, 1, 1) * attn +
-            weights[:, 1].view(-1, 1, 1, 1) * attn_0 +
-            weights[:, 2].view(-1, 1, 1, 1) * attn_1 +
-            weights[:, 3].view(-1, 1, 1, 1) * attn_2
+            weights[:, 0, 0].view(-1, 1, 1, 1) * attn +
+            weights[:, 0, 1].view(-1, 1, 1, 1) * attn_0 +
+            weights[:, 0, 2].view(-1, 1, 1, 1) * attn_1 +
+            weights[:, 0, 3].view(-1, 1, 1, 1) * attn_2
         )
 
         # Channel Mixing
