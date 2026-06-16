@@ -1,5 +1,5 @@
 _base_ = [
-    'segnext_mscan-t_10k_plantsegwheat.py'
+    'segnext_mscan-t_10k_rice.py'
 ]
 # model settings
 embed_dims=[32, 64, 160, 256]
