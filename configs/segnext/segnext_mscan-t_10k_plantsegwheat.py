@@ -73,12 +73,13 @@ optim_wrapper = dict(
         }))
 
 param_scheduler = [
-    dict(
-        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
+    # dict(
+        # type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
     dict(
         type='PolyLR',
         power=1.0,
-        begin=1500,
+        # begin=1500,
+        begin=0,
         end=10000,
         eta_min=0.0,
         by_epoch=False,
