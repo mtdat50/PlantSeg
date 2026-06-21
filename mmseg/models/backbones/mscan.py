@@ -325,10 +325,12 @@ class CustomMSCAAttention5(BaseModule):
     def __init__(self, channels):
         super().__init__()
         self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 9
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 15
-        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 21
-        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 27
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=2, dilation=2, groups=channels) #5, 7
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 13
+        # self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=4, dilation=4, groups=channels) #9, 21
+        # self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=5, dilation=5, groups=channels) #11, 31
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 19
+        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 25
         self.weight = nn.Parameter(torch.ones(4))
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
