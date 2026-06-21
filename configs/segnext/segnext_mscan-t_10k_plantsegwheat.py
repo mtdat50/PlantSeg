@@ -64,7 +64,7 @@ train_dataloader = dict(batch_size=16)
 optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
-        type='AdamW', lr=0.0005, betas=(0.9, 0.999), weight_decay=0.01),
+        type='AdamW', lr=0.0002, betas=(0.9, 0.999), weight_decay=0.01),
     paramwise_cfg=dict(
         custom_keys={
             'pos_block': dict(decay_mult=0.),
