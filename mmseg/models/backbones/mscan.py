@@ -422,7 +422,8 @@ class CustomMSCAAttention6(BaseModule):
         attn = (
             self.weight[0] * attn +
             self.weight[1] * attn_0 +
-            self.weight[2] * attn_1 
+            self.weight[2] * attn_1 +
+            self.weight[3] * attn_2
         )
         # Channel Mixing
         attn = self.conv3(attn)
