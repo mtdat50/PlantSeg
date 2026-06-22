@@ -192,10 +192,10 @@ class CustomMSCAAttention(BaseModule):
     def __init__(self, channels):
         super().__init__()
         self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #9
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #15
-        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #21
-        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #27
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=2, dilation=2, groups=channels) #5, 7
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 13
+        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 19
+        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 25
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
 
@@ -316,23 +316,15 @@ class CustomMSCAAttention4(BaseModule):
         return out
 
 
-class CustomMSCAAttention5(BaseModule):
+class CustomMSCAAttention5(CustomMSCAAttention2):
     """ With skip connections between the multi-scale feature extraction layers
 
     Args:
         channels (int): The dimension of channels.
     """
     def __init__(self, channels):
-        super().__init__()
-        self.conv0 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, groups=channels) #3
-        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=2, dilation=2, groups=channels) #5, 7
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 13
-        # self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=4, dilation=4, groups=channels) #9, 21
-        # self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=5, dilation=5, groups=channels) #11, 31
-        self.conv3 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 19
-        self.conv4 = nn.Conv2d(channels, channels, kernel_size=3, padding=3, dilation=3, groups=channels) #7, 25
+        super().__init__(channels)
         self.weight = nn.Parameter(torch.ones(4))
-        self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
     def forward(self, x):
         u = x.clone()
@@ -801,6 +793,59 @@ class CustomMSCAAttention16(CustomMSCAAttention8):
         return out
 
 
+class CustomMSCAAttention17(CustomMSCAAttention2):
+    def __init__(self, channels):
+        super().__init__(channels)
+        self.gap = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Unflatten(1, (1, channels))
+        )
+        self.weighting = nn.Sequential(
+            nn.Linear(channels * 4, channels // 4),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // 4, 4),
+            nn.Softmax(dim=-1)
+        )
+
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
+        sum2 = sum1 + attn2
+        attn3 = self.conv3(sum2)
+        sum3 = sum2 + attn3
+        attn4 = self.conv4(sum3)
+
+        pooled = torch.cat(
+            [
+                self.gap(attn1),
+                self.gap(attn2),
+                self.gap(attn3),
+                self.gap(attn4)
+            ],
+            dim=2
+        )
+        weights = self.weighting(pooled)
+        attn = (
+            weights[:, 0, 0].view(-1, 1, 1, 1) * attn1 +
+            weights[:, 0, 1].view(-1, 1, 1, 1) * attn2 +
+            weights[:, 0, 2].view(-1, 1, 1, 1) * attn3 +
+            weights[:, 0, 3].view(-1, 1, 1, 1) * attn4
+        )
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -886,6 +931,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention15(hidden_channels)
             case 16:
                 self.spatial_gating_unit = CustomMSCAAttention16(hidden_channels)
+            case 17:
+                self.spatial_gating_unit = CustomMSCAAttention17(hidden_channels)
 
 
 class AttentionModule(BaseModule):
