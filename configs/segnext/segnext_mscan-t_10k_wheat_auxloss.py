@@ -4,7 +4,7 @@ _base_ = [
 
 
 # model settings
-ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
+cls_loss_weight = 0.1
 model = dict(
     type='EncoderDecoderWithCls',
     cls_head=dict(
@@ -12,10 +12,10 @@ model = dict(
         in_channels=256,   # depends on backbone
         num_classes=9
     ),
-    cls_loss_weight=0.1,
+    cls_loss_weight=cls_loss_weight,
     decode_head=dict(
         loss_decode=[
-           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.9, avg_non_ignore=True)
+           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1 - cls_loss_weight, avg_non_ignore=True)
         ],
         ignore_index=255
     ),
