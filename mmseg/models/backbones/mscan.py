@@ -1125,7 +1125,7 @@ class CAM(nn.Module):
         linear_max = self.linear(max.view(b,c)).view(b, c, 1)
         linear_avg = self.linear(avg.view(b,c)).view(b, c, 1)
         output = linear_max + linear_avg
-        # output = F.sigmoid(output)
+        output = F.sigmoid(output)
         output = output * x
         return output
 
@@ -1166,7 +1166,7 @@ class eca_layer(nn.Module):
         y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
 
         # Multi-scale information fusion
-        # y = self.sigmoid(y)
+        y = self.sigmoid(y)
 
         return x * y.expand_as(x)
 
@@ -1199,8 +1199,8 @@ class MSCABlockWithChannelAttention(BaseModule):
                 self.channel_attention = nn.MultiheadAttention(64, num_heads=8, batch_first=True)
                 self.expand = nn.Linear(64, self.input_size ** 2)
             case 'SE':
-                # self.channel_attention = SqueezeExcitation(channels, channels // 16)
-                self.channel_attention = SqEx(channels, channels // 16)
+                self.channel_attention = SqueezeExcitation(channels, channels // 16)
+                # self.channel_attention = SqEx(channels, channels // 16)
             case 'ECA':
                 t = (math.log2(channels) + 1) // 2
                 k = t if t % 2 else t + 1
@@ -1233,11 +1233,17 @@ class MSCABlockWithChannelAttention(BaseModule):
         """Forward function."""
 
         B, N, C = x.shape
-        # print('input to MSCABlockWithChannelAttention', x.shape)
-        # exit(0)
-        # print('aaaaa ', H, W)
         x = x.permute(0, 2, 1)
 
+        x = x.view(B, C, H, W)
+        x = x + self.drop_path(
+            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
+            self.attn(self.norm1(x)))
+        x = x + self.drop_path(
+            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) *
+            self.mlp(self.norm2(x)))
+
+        x = x.view(B, C, N)
         if self.channel_attention_type == 'SA':
             x = x
             normed_x = self.norm0(x).view(B, C, H, W)
@@ -1257,20 +1263,12 @@ class MSCABlockWithChannelAttention(BaseModule):
             x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
                 *
                 self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
-            x = x.view(B, C, H, W)
         else:
             normed_x = self.norm0(x)
             x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
                 *
                 self.channel_attention(normed_x))
-            x = x.view(B, C, H, W)
 
-        x = x + self.drop_path(
-            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
-            self.attn(self.norm1(x)))
-        x = x + self.drop_path(
-            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) *
-            self.mlp(self.norm2(x)))
         x = x.view(B, C, N).permute(0, 2, 1)
         return x
 
