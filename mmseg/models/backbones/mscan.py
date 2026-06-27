@@ -799,7 +799,7 @@ class CustomMSCAAttention17(CustomMSCAAttention2):
         self.gap = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
-            nn.Unflatten(1, (1, channels))
+            nn.Unflatten(1, (channels, ))
         )
         self.weighting = nn.Sequential(
             nn.Linear(channels * 4, channels // 4),
@@ -833,10 +833,10 @@ class CustomMSCAAttention17(CustomMSCAAttention2):
         )
         weights = self.weighting(pooled)
         attn = (
-            weights[:, 0, 0].view(-1, 1, 1, 1) * attn1 +
-            weights[:, 0, 1].view(-1, 1, 1, 1) * attn2 +
-            weights[:, 0, 2].view(-1, 1, 1, 1) * attn3 +
-            weights[:, 0, 3].view(-1, 1, 1, 1) * attn4
+            weights[:, 0] * attn1 +
+            weights[:, 1] * attn2 +
+            weights[:, 2] * attn3 +
+            weights[:, 3] * attn4
         )
         attn = self.channel_mixing(attn)
 
@@ -1125,7 +1125,8 @@ class CAM(nn.Module):
         linear_max = self.linear(max.view(b,c)).view(b, c, 1)
         linear_avg = self.linear(avg.view(b,c)).view(b, c, 1)
         output = linear_max + linear_avg
-        output = F.sigmoid(output) * x
+        # output = F.sigmoid(output)
+        output = output * x
         return output
 
 
@@ -1150,7 +1151,7 @@ class eca_layer(nn.Module):
         y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
 
         # Multi-scale information fusion
-        y = self.sigmoid(y)
+        # y = self.sigmoid(y)
 
         return x * y.expand_as(x)
 
