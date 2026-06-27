@@ -1130,6 +1130,21 @@ class CAM(nn.Module):
         return output
 
 
+class SqEx(nn.Module):
+    def __init__(self, channels, hidden_channels=16):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, hidden_channels, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_channels, channels, 1)
+        )
+
+    def forward(self, x):
+        scale = self.mlp(x)
+        return scale * x
+
+
 class eca_layer(nn.Module):
     """Constructs a ECA module.
 
@@ -1184,7 +1199,8 @@ class MSCABlockWithChannelAttention(BaseModule):
                 self.channel_attention = nn.MultiheadAttention(64, num_heads=8, batch_first=True)
                 self.expand = nn.Linear(64, self.input_size ** 2)
             case 'SE':
-                self.channel_attention = SqueezeExcitation(channels, channels // 16)
+                # self.channel_attention = SqueezeExcitation(channels, channels // 16)
+                self.channel_attention = SqEx(channels, channels // 16)
             case 'ECA':
                 t = (math.log2(channels) + 1) // 2
                 k = t if t % 2 else t + 1
