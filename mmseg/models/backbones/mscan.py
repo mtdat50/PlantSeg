@@ -833,10 +833,10 @@ class CustomMSCAAttention17(CustomMSCAAttention2):
         )
         weights = self.weighting(pooled)
         attn = (
-            weights[:, 0] * attn1 +
-            weights[:, 1] * attn2 +
-            weights[:, 2] * attn3 +
-            weights[:, 3] * attn4
+            weights[:, 0].view(-1, 1, 1, 1) * attn1 +
+            weights[:, 1].view(-1, 1, 1, 1) * attn2 +
+            weights[:, 2].view(-1, 1, 1, 1) * attn3 +
+            weights[:, 3].view(-1, 1, 1, 1) * attn4
         )
         attn = self.channel_mixing(attn)
 

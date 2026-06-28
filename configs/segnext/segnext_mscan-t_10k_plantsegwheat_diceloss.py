@@ -6,7 +6,7 @@ _base_ = [
 model = dict(
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', loss_weight=1),
+            dict(type='DiceLoss', loss_weight=2),
         ],
     ),
 )
