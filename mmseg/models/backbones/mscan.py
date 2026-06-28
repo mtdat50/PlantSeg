@@ -38,7 +38,8 @@ class Mlp(BaseModule):
                  hidden_features=None,
                  out_features=None,
                  act_cfg=dict(type='GELU'),
-                 drop=0.):
+                 drop=0.,
+                 channel_attention_type=None):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -55,13 +56,25 @@ class Mlp(BaseModule):
         self.fc2 = nn.Conv2d(hidden_features, out_features, 1)
         self.drop = nn.Dropout(drop)
 
+        match channel_attention_type:
+            case "SE":
+                self.channel_attention = SqueezeExcitation(hidden_features, hidden_features // 32)
+            case "ECA":
+                    t = (math.log2(hidden_features) + 1) // 2
+                    k = t if t % 2 else t + 1
+                    self.channel_attention = eca_layer(k_size=int(k))
+            case "CBAM":
+                self.channel_attention = CAM(hidden_features, r=1)
+            case _:
+                self.channel_attention = nn.Identity()
+
     def forward(self, x):
         """Forward function."""
 
         x = self.fc1(x)
-
         x = self.dwconv(x)
         x = self.act(x)
+        x = x + self.channel_attention(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = self.drop(x)
@@ -1016,7 +1029,8 @@ class MSCABlock(BaseModule):
                  drop=0.,
                  drop_path=0.,
                  act_cfg=dict(type='GELU'),
-                 norm_cfg=dict(type='SyncBN', requires_grad=True)):
+                 norm_cfg=dict(type='SyncBN', requires_grad=True),
+                 mlp_channel_attention_type=None):
         super().__init__()
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
         self.attn = MSCASpatialAttention(channels, channels, attention_kernel_sizes,
@@ -1029,7 +1043,9 @@ class MSCABlock(BaseModule):
             in_features=channels,
             hidden_features=mlp_hidden_channels,
             act_cfg=act_cfg,
-            drop=drop)
+            drop=drop,
+            channel_attention_type=mlp_channel_attention_type
+        )
         layer_scale_init_value = 1e-2
         self.layer_scale_1 = nn.Parameter(
             layer_scale_init_value * torch.ones(channels), requires_grad=True)
@@ -1235,16 +1251,18 @@ class MSCABlockWithChannelAttention(BaseModule):
         B, N, C = x.shape
         x = x.permute(0, 2, 1)
 
-        x = x.view(B, C, H, W)
-        x = x + self.drop_path(
-            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
-            self.attn(self.norm1(x)))
-        x = x + self.drop_path(
-            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) *
-            self.mlp(self.norm2(x)))
-
         x = x.view(B, C, N)
-        if self.channel_attention_type == 'SA':
+        if self.channel_attention_type is None:
+            normed_x = self.norm0(x)
+            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x))
+        elif self.channel_attention_type in ['SE', 'ECA']:
+            normed_x = self.norm0(x)
+            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
+        elif self.channel_attention_type == 'SA':
             x = x
             normed_x = self.norm0(x).view(B, C, H, W)
             padding = (0, self.input_size - W, 0, self.input_size - H)
@@ -1258,16 +1276,14 @@ class MSCABlockWithChannelAttention(BaseModule):
             x = x.view(B, C, H, W) + self.drop_path(
                 self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
             )
-        elif self.channel_attention_type in ['SE', 'ECA']:
-            normed_x = self.norm0(x)
-            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
-                *
-                self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
-        else:
-            normed_x = self.norm0(x)
-            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
-                *
-                self.channel_attention(normed_x))
+
+        x = x.view(B, C, H, W)
+        x = x + self.drop_path(
+            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
+            self.attn(self.norm1(x)))
+        x = x + self.drop_path(
+            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) *
+            self.mlp(self.norm2(x)))
 
         x = x.view(B, C, N).permute(0, 2, 1)
         return x
@@ -1365,7 +1381,8 @@ class MSCAN(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
-                 init_cfg=None):
+                 init_cfg=None,
+                 mlp_channel_attention_type=None):
         super().__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
@@ -1405,7 +1422,9 @@ class MSCAN(BaseModule):
                     drop=drop_rate,
                     drop_path=dpr[cur + j],
                     act_cfg=act_cfg,
-                    norm_cfg=norm_cfg) for j in range(depths[i])
+                    norm_cfg=norm_cfg,
+                    mlp_channel_attention_type=mlp_channel_attention_type
+                ) for j in range(depths[i])
             ])
             norm = nn.LayerNorm(embed_dims[i])
             cur += depths[i]
