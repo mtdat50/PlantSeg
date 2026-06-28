@@ -829,7 +829,7 @@ class CustomMSCAAttention17(CustomMSCAAttention2):
                 self.gap(attn3),
                 self.gap(attn4)
             ],
-            dim=2
+            dim=1
         )
         weights = self.weighting(pooled)
         attn = (
