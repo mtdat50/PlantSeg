@@ -13,6 +13,8 @@ from mmcv.cnn.bricks import DropPath
 from mmengine.model import BaseModule
 from mmengine.model.weight_init import (constant_init, normal_init,
                                         trunc_normal_init)
+from mmengine.registry import HOOKS
+from mmengine.hooks import Hook
 
 from mmseg.registry import MODELS
 from mmseg.models.decode_heads.ham_head import Hamburger, CustomHamburger
@@ -1197,12 +1199,13 @@ class MSCABlockWithChannelAttention(BaseModule):
                  drop_path=0.,
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
-                 channel_attn = 'Ham',
+                 channel_attn = 'SE',
                  ham_kwargs=dict(), ham_norm_cfg=None,
                 input_size=256):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
 
+        self.warmup_progress = 0.
         self.channel_attention_type = channel_attn
         match channel_attn:
             case 'Ham':
@@ -1252,30 +1255,32 @@ class MSCABlockWithChannelAttention(BaseModule):
         x = x.permute(0, 2, 1)
 
         x = x.view(B, C, N)
-        if self.channel_attention_type is None:
+        if self.channel_attention_type in ['SE', 'ECA']:
             normed_x = self.norm0(x)
-            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
-                *
-                self.channel_attention(normed_x))
-        elif self.channel_attention_type in ['SE', 'ECA']:
-            normed_x = self.norm0(x)
-            x = x + self.drop_path(self.layer_scale_0.unsqueeze(-1)
+            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
                 *
                 self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
-        elif self.channel_attention_type == 'SA':
-            x = x
-            normed_x = self.norm0(x).view(B, C, H, W)
-            padding = (0, self.input_size - W, 0, self.input_size - H)
-            normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
-
-            low_dim_x = self.reduce(normed_x)
-            attn_output = self.channel_attention(low_dim_x, low_dim_x, low_dim_x, need_weights=False)[0]
-            attn_output = self.expand(attn_output)
-
-            attn_output = attn_output.view(B, C, self.input_size, self.input_size)[:, :, :H, :W]
-            x = x.view(B, C, H, W) + self.drop_path(
-                self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
-            )
+        # elif self.channel_attention_type == 'SA':
+        #     x = x
+        #     normed_x = self.norm0(x).view(B, C, H, W)
+        #     padding = (0, self.input_size - W, 0, self.input_size - H)
+        #     normed_x = F.pad(normed_x, padding, mode='constant', value=0).view(B, C, self.input_size ** 2)
+        #
+        #     low_dim_x = self.reduce(normed_x)
+        #     attn_output = self.channel_attention(low_dim_x, low_dim_x, low_dim_x, need_weights=False)[0]
+        #     attn_output = self.expand(attn_output)
+        #
+        #     attn_output = attn_output.view(B, C, self.input_size, self.input_size)[:, :, :H, :W]
+        #     x = x.view(B, C, H, W) + self.drop_path(
+            #     self.layer_scale_0.unsqueeze(-1).unsqueeze(-1) * attn_output
+            # )
+        else:
+            normed_x = self.norm0(x)
+            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x))
+        x = (2 - self.warmup_progress) * x + self.warmup_progress * channel_attn
+        # print("===self.alpha", self.alpha)
 
         x = x.view(B, C, H, W)
         x = x + self.drop_path(
