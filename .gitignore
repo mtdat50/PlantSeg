@@ -1,2 +1,5 @@
 *.pyc
 work_dirs
+mmseg/.mim/
+mmsegmentation.egg-info/
+data
