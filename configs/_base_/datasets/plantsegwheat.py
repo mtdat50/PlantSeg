@@ -76,5 +76,15 @@ test_dataloader = dict(
             img_path='images/test', seg_map_path='annotations/test'),
         pipeline=test_pipeline))
 
+test_evaluator = [
+    dict(
+        type='IoUMetric',
+        iou_metrics=['mIoU', 'mDice', 'mFscore']
+    ),
+    dict(
+        type='ConfusionMatrixMetric',
+        num_classes=9,
+        ignore_index=255
+    )
+]
 val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU', 'mDice', 'mFscore'])
-test_evaluator = val_evaluator

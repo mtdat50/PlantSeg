@@ -15,7 +15,7 @@ class PlantSegWheatDataset(BaseSegDataset):
     and ``seg_map_suffix`` is fixed to '.png'.
     """
     METAINFO = dict(
-        classes=('', 'wheat bacterial leaf streak (black chaff)', 'wheat head scab',
+        classes=('background', 'wheat bacterial leaf streak (black chaff)', 'wheat head scab',
                  'wheat leaf rust', 'wheat loose smut', 'wheat powdery mildew', 'wheat septoria blotch',
                  'wheat stem rust', 'wheat stripe rust'),
 

@@ -65,5 +65,15 @@ val_dataloader = dict(
         pipeline=test_pipeline))
 test_dataloader = val_dataloader
 
-val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU', 'mDice'])
-test_evaluator = val_evaluator
+test_evaluator = [
+    dict(
+        type='IoUMetric',
+        iou_metrics=['mIoU', 'mDice', 'mFscore']
+    ),
+    dict(
+        type='ConfusionMatrixMetric',
+        num_classes=3,
+        ignore_index=255
+    )
+]
+val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU', 'mDice', 'mFscore'])
