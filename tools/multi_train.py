@@ -4,12 +4,17 @@ import logging
 import os
 import os.path as osp
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
+from mmengine.utils import mkdir_or_exist, progressbar
 from mmengine.config import Config, DictAction
 from mmengine.logging import print_log
 from mmengine.runner import Runner
 
 from mmseg.registry import RUNNERS
+from mmseg.registry import DATASETS
 
 
 def parse_args():
@@ -50,6 +55,90 @@ def parse_args():
         os.environ['LOCAL_RANK'] = str(args.local_rank)
 
     return args
+
+def plot_confusion_matrix(confusion_matrix,
+                          labels,
+                          save_dir=None,
+                          show=True,
+                          title='Normalized Confusion Matrix',
+                          color_theme='OrRd'):
+    """Draw confusion matrix with matplotlib.
+
+    Args:
+        confusion_matrix (ndarray): The confusion matrix.
+        labels (list[str]): List of class names.
+        save_dir (str|optional): If set, save the confusion matrix plot to the
+            given path. Default: None.
+        show (bool): Whether to show the plot. Default: True.
+        title (str): Title of the plot. Default: `Normalized Confusion Matrix`.
+        color_theme (str): Theme of the matrix color map. Default: `winter`.
+    """
+    # normalize the confusion matrix
+    per_label_sums = confusion_matrix.sum(axis=1)[:, np.newaxis]
+    confusion_matrix = \
+        confusion_matrix.astype(np.float32) / per_label_sums * 100
+
+    num_classes = len(labels)
+    fig, ax = plt.subplots(
+        figsize=(2 * num_classes, 2 * num_classes * 0.8), dpi=300)
+    cmap = plt.get_cmap(color_theme)
+    im = ax.imshow(confusion_matrix, cmap=cmap)
+    colorbar = plt.colorbar(mappable=im, ax=ax)
+    colorbar.ax.tick_params(labelsize=20)  # 设置 colorbar 标签的字体大小
+
+    title_font = {'weight': 'bold', 'size': 20}
+    ax.set_title(title, fontdict=title_font)
+    label_font = {'size': 40}
+    plt.ylabel('Ground Truth Label', fontdict=label_font)
+    plt.xlabel('Prediction Label', fontdict=label_font)
+
+    # draw locator
+    xmajor_locator = MultipleLocator(1)
+    xminor_locator = MultipleLocator(0.5)
+    ax.xaxis.set_major_locator(xmajor_locator)
+    ax.xaxis.set_minor_locator(xminor_locator)
+    ymajor_locator = MultipleLocator(1)
+    yminor_locator = MultipleLocator(0.5)
+    ax.yaxis.set_major_locator(ymajor_locator)
+    ax.yaxis.set_minor_locator(yminor_locator)
+
+    # draw grid
+    ax.grid(True, which='minor', linestyle='-')
+
+    # draw label
+    ax.set_xticks(np.arange(num_classes))
+    ax.set_yticks(np.arange(num_classes))
+    ax.set_xticklabels(labels, fontsize=20)
+    ax.set_yticklabels(labels, fontsize=20)
+
+    ax.tick_params(
+        axis='x', bottom=False, top=True, labelbottom=False, labeltop=True)
+    plt.setp(
+        ax.get_xticklabels(), rotation=45, ha='left', rotation_mode='anchor')
+
+    # draw confusion matrix value
+    for i in range(num_classes):
+        for j in range(num_classes):
+            ax.text(
+                j,
+                i,
+                '{}%'.format(
+                    round(confusion_matrix[i, j], 2
+                          ) if not np.isnan(confusion_matrix[i, j]) else -1),
+                ha='center',
+                va='center',
+                color='k',
+                size=20)
+
+    ax.set_ylim(len(confusion_matrix) - 0.5, -0.5)  # matplotlib>3.1.1
+
+    fig.tight_layout()
+    if save_dir is not None:
+        mkdir_or_exist(save_dir)
+        plt.savefig(
+            os.path.join(save_dir, 'confusion_matrix.png'), format='png')
+    if show:
+        plt.show()
 
 
 def mean_std(values):
@@ -100,9 +189,12 @@ def main():
     mprecisions = []
     mrecalls = []
 
+    # prepare confusion_matrix storage on disk
+    os.remove("confusion_matrix.npy") if os.path.exists("confusion_matrix.npy") else None
+
     # start training
-    train_seeds = [2**i for i in range(5)]
-    for train_seed in train_seeds:
+    for i in range(5):
+        train_seed = 2**i
         cfg.randomness = dict(seed=train_seed, deterministic=False, diff_rank_seed=True)
         if 'runner_type' not in cfg:
             # build the default runner
@@ -113,8 +205,15 @@ def main():
             runner = RUNNERS.build(cfg)
 
         runner.train()
+        runner.save_checkpoint(
+            out_dir=cfg.work_dir,
+            filename=f'model_{i}.pth', 
+            save_optimizer=True,       # Include optimizer state for resuming
+            save_param_scheduler=True, # Include scheduler state
+            meta={'comment': 'Manual save'} # Optional metadata
+        )
 
-        test_seeds = [2**i for i in range(10)]
+        test_seeds = [2**j for j in range(10)]
         for test_seed in test_seeds:
             runner.cfg.randomness = dict(seed=test_seed, deterministic=False, diff_rank_seed=True)
 
@@ -143,7 +242,17 @@ def main():
         f'mRecall: {mean_mrecall:.2f} ± {std_mrecall:.2f}'
     )
 
+    confusion_matrix = np.load("confusion_matrix.npy")
+    dataset = DATASETS.build(cfg.test_dataloader.dataset)
+    plot_confusion_matrix(
+        confusion_matrix,
+        dataset.METAINFO['classes'],
+        save_dir=os.path.join(cfg.work_dir, "confusion_matrix.png"),
+        show=False,
+        title="",
+        color_theme="winter")
 
+    os.rename("confusion_matrix.npy", os.path.join(cfg.work_dir, "confusion_matrix.npy"))
 
 if __name__ == '__main__':
     main()
