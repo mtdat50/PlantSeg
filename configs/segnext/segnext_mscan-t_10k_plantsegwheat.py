@@ -23,7 +23,7 @@ model = dict(
     pretrained=None,
     backbone=dict(
         type='MSCAN',
-        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
         embed_dims=[32, 64, 160, 256],
         mlp_ratios=[8, 8, 4, 4],
         drop_rate=0.0,
@@ -87,7 +87,7 @@ param_scheduler = [
 ]
 
 # training schedule for 10k
-train_cfg = dict(type='IterBasedTrainLoop', max_iters=1, val_interval=1000)
+train_cfg = dict(type='IterBasedTrainLoop', max_iters=10000, val_interval=1000)
 val_cfg = dict(type='ValLoop')
 test_cfg = dict(type='TestLoop')
 default_hooks = dict(

@@ -14,7 +14,7 @@ model = dict(
     cls_loss_weight=0.1,
     decode_head=dict(
         loss_decode=[
-           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1, avg_non_ignore=True)
+           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.9, avg_non_ignore=True)
         ],
         ignore_index=255
     ),
