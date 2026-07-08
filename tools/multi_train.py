@@ -247,7 +247,7 @@ def main():
     plot_confusion_matrix(
         confusion_matrix,
         dataset.METAINFO['classes'],
-        save_dir=os.path.join(cfg.work_dir, "confusion_matrix.png"),
+        save_dir=cfg.work_dir,
         show=False,
         title="",
         color_theme="winter")
