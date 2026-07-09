@@ -11,7 +11,7 @@ model = dict(
 custom_hooks = [
     dict(
         type='WarmupHook',
-        warmup_iters=5000
+        warmup_iters=0
     )
 ]
 
