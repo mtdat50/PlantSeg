@@ -7,7 +7,6 @@ _base_ = [
 
 
 # model settings
-ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 model = dict(
     decode_head=dict(
         loss_decode=[
