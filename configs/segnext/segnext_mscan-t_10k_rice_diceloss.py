@@ -10,8 +10,9 @@ _base_ = [
 model = dict(
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', loss_weight=1),
-           # dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1, class_weight=[0.1, 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2], avg_non_ignore=True)
+            # dict(type='DiceLoss', loss_weight=1),
+            dict(type='DiceLoss', loss_weight=0.5),
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.5)
         ],
     ),
 )

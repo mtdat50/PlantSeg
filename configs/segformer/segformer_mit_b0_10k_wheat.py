@@ -2,11 +2,10 @@ _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/datasets/plantsegwheat.py'
 ]
+
+checkpoint_file = '~/.cache/torch/hub/checkpoints/mit_b0.pth'  # noqa
 # model settings
-# checkpoint_file = '/kaggle/input/models/tmaitn/mscan-t-20230227-119e8c9f/other/default/1/mscan_t_20230227-119e8c9f.pth'  # noqa
-# checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_t_20230227-119e8c9f.pth'  # noqa
-checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
-ham_norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 crop_size = (256, 256)
 data_preprocessor = dict(
     type='SegDataPreProcessor',
@@ -22,43 +21,38 @@ model = dict(
     data_preprocessor=data_preprocessor,
     pretrained=None,
     backbone=dict(
-        type='MSCAN',
+        type='MixVisionTransformer',
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
-        embed_dims=[32, 64, 160, 256],
-        mlp_ratios=[8, 8, 4, 4],
+        in_channels=3,
+        embed_dims=32,
+        num_stages=4,
+        num_layers=[2, 2, 2, 2],
+        num_heads=[1, 2, 5, 8],
+        patch_sizes=[7, 3, 3, 3],
+        sr_ratios=[8, 4, 2, 1],
+        out_indices=(0, 1, 2, 3),
+        mlp_ratio=4,
+        qkv_bias=True,
         drop_rate=0.0,
-        drop_path_rate=0.1,
-        depths=[3, 3, 5, 2],
-        attention_kernel_sizes=[5, [1, 7], [1, 11], [1, 21]],
-        attention_kernel_paddings=[2, [0, 3], [0, 5], [0, 10]],
-        act_cfg=dict(type='GELU'),
-        norm_cfg=dict(type='BN', requires_grad=True)),
+        attn_drop_rate=0.0,
+        drop_path_rate=0.1),
     decode_head=dict(
-        type='LightHamHead',
-        in_channels=[64, 160, 256],
-        in_index=[1, 2, 3],
+        type='SegformerHead',
+        in_channels=[32, 64, 160, 256],
+        in_index=[0, 1, 2, 3],
         channels=256,
-        ham_channels=256,
         dropout_ratio=0.1,
         num_classes=9,
-        norm_cfg=ham_norm_cfg,
+        norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=dict(
-            # type='DiceLoss'),
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-        ham_kwargs=dict(
-            MD_S=1,
-            MD_R=16,
-            train_steps=6,
-            eval_steps=7,
-            inv_t=100,
-            rand_init=True)),
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
 
-# dataset settings
-train_dataloader = dict(batch_size=16)
+
+train_dataloader = dict(batch_size=2)
 
 # optimizer
 optim_wrapper = dict(
