@@ -1,8 +1,5 @@
 _base_ = [
-    '../_base_/models/lraspp_m-v3-d8.py',
-    '../_base_/datasets/plantsegwheat.py',
-    '../_base_/default_runtime.py',
-    '../_base_/wheat_settings.py'
+    './mobilenetv3-l_lraspp_wheat.py',
 ]
 # crop_size = (256, 256)
 size = (512, 512)
