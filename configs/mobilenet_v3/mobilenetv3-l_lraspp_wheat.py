@@ -38,7 +38,7 @@ test_pipeline = [
     dict(type='LoadAnnotations', reduce_zero_label=False),
     dict(type='PackSegInputs')
 ]
-train_dataloader = dict(batch_size=1, dataset=dict(pipeline=train_pipeline))
+train_dataloader = dict(batch_size=16, dataset=dict(pipeline=train_pipeline))
 val_dataloader = dict(dataset=dict(pipeline=test_pipeline))
 test_dataloader = dict(dataset=dict(pipeline=test_pipeline))
 
