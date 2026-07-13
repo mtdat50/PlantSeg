@@ -243,7 +243,6 @@ class MobileNetV3(BaseModule):
         return layers
 
     def forward(self, x):
-        print("=== mobilenet input x.shape", x.shape)
         outs = []
         for i, layer_name in enumerate(self.layers):
             layer = getattr(self, layer_name)
