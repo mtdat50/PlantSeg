@@ -5,8 +5,8 @@ _base_ = [
     '../_base_/wheat_settings.py'
 ]
 # crop_size = (256, 256)
-# size = (512, 512)
-size = (1024, 1024)
+size = (512, 512)
+# size = (1024, 1024)
 data_preprocessor = dict(size=size)
 model = dict(
     data_preprocessor=data_preprocessor,
@@ -31,7 +31,8 @@ train_pipeline = [
 ]
 test_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='Resize', scale=size, keep_ratio=True),
+    dict(type='ResizeShortestEdge', scale=size[0], max_size=10000),
+    # dict(type='Resize', scale=size, keep_ratio=True),
     # add loading annotation after ``Resize`` because ground truth
     # does not need to do resize data transform
     dict(type='LoadAnnotations', reduce_zero_label=False),
