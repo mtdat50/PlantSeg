@@ -3,7 +3,7 @@ _base_ = [
     '../_base_/datasets/plantsegwheat.py'
 ]
 
-checkpoint_file = '~/.cache/torch/hub/checkpoints/mit_b0.pth'  # noqa
+checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segformer/mit_b0_20220624-7e0fe6dd.pth' # noqa
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 crop_size = (256, 256)
