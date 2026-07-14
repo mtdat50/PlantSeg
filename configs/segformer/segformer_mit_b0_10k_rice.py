@@ -1,6 +1,6 @@
 _base_ = [
     '../_base_/default_runtime.py',
-    '../_base_/datasets/plantsegwheat.py',
+    '../_base_/datasets/rice.py',
     '../_base_/rice_settings.py',
 ]
 
@@ -53,4 +53,4 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 
-train_dataloader = dict(batch_size=2)
+# train_dataloader = dict(batch_size=2)
