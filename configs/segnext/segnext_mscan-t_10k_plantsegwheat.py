@@ -1,6 +1,7 @@
 _base_ = [
     '../_base_/default_runtime.py',
-    '../_base_/datasets/plantsegwheat.py'
+    '../_base_/datasets/plantsegwheat.py',
+    '../base_/wheat_settings.py'
 ]
 # model settings
 # checkpoint_file = '/kaggle/input/models/tmaitn/mscan-t-20230227-119e8c9f/other/default/1/mscan_t_20230227-119e8c9f.pth'  # noqa
@@ -58,42 +59,5 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 # dataset settings
-train_dataloader = dict(batch_size=16)
+# train_dataloader = dict(batch_size=16)
 
-# optimizer
-optim_wrapper = dict(
-    type='OptimWrapper',
-    optimizer=dict(
-        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=dict(
-        custom_keys={
-            'pos_block': dict(decay_mult=0.),
-            'norm': dict(decay_mult=0.),
-            'head': dict(lr_mult=10.)
-        }))
-
-param_scheduler = [
-    dict(
-        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
-    dict(
-        type='PolyLR',
-        power=1.0,
-        begin=1500,
-        # begin=0,
-        end=10000,
-        eta_min=0.0,
-        by_epoch=False,
-    )
-]
-
-# training schedule for 10k
-train_cfg = dict(type='IterBasedTrainLoop', max_iters=10000, val_interval=1000)
-val_cfg = dict(type='ValLoop')
-test_cfg = dict(type='TestLoop')
-default_hooks = dict(
-    timer=dict(type='IterTimerHook'),
-    logger=dict(type='LoggerHook', interval=50, log_metric_by_epoch=False),
-    param_scheduler=dict(type='ParamSchedulerHook'),
-    checkpoint=dict(type='CheckpointHook', by_epoch=False, interval=10000),
-    sampler_seed=dict(type='DistSamplerSeedHook'),
-    visualization=dict(type='SegVisualizationHook'))
