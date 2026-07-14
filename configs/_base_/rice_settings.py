@@ -14,8 +14,8 @@ optim_wrapper = dict(
 iters = 5000
 warmup_iters = 0
 param_scheduler = [
-    dict(
-        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=warmup_iters),
+    # dict(
+    #     type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=warmup_iters),
     dict(
         type='PolyLR',
         power=1.0,
