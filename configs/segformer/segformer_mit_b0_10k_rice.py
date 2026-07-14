@@ -1,7 +1,7 @@
 _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/datasets/plantsegwheat.py',
-    '../_base_/wheat_settings.py',
+    '../_base_/rice_settings.py',
 ]
 
 checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segformer/mit_b0_20220624-7e0fe6dd.pth' # noqa
@@ -43,7 +43,7 @@ model = dict(
         in_index=[0, 1, 2, 3],
         channels=256,
         dropout_ratio=0.1,
-        num_classes=9,
+        num_classes=3,
         norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=dict(
@@ -53,4 +53,4 @@ model = dict(
     test_cfg=dict(mode='whole'))
 
 
-train_dataloader = dict(batch_size=16)
+train_dataloader = dict(batch_size=2)

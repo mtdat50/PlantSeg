@@ -11,7 +11,7 @@ optim_wrapper = dict(
             'head': dict(lr_mult=10.)
         }))
 
-iters = 10000
+iters = 5000
 warmup_iters = 0
 param_scheduler = [
     dict(
