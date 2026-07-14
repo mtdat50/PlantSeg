@@ -1,7 +1,7 @@
 _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/datasets/plantsegwheat.py',
-    '../base_/wheat_settings.py'
+    '../_base_/wheat_settings.py'
 ]
 # model settings
 # checkpoint_file = '/kaggle/input/models/tmaitn/mscan-t-20230227-119e8c9f/other/default/1/mscan_t_20230227-119e8c9f.pth'  # noqa
