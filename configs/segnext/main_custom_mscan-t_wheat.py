@@ -28,8 +28,8 @@ model = dict(
     cls_loss_weight=0.1,
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', loss_weight=0.5),
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.5)
+            dict(type='DiceLoss', loss_weight=0.45),
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.45)
         ],
         ignore_index=255
     ),
