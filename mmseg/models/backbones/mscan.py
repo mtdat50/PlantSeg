@@ -1777,7 +1777,8 @@ class MSCANWithChannelAttention(MSCAN):
                  init_cfg=None,
                  channel_attn = 'Ham',
                  ham_kwargs=dict(), ham_norm_cfg=None,
-                 input_size=512):
+                 input_size=512,
+                 **kwargs):
         super(MSCAN, self).__init__(init_cfg=init_cfg)
 
         assert not (init_cfg and pretrained), \
