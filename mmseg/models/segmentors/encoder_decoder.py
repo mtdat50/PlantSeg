@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmengine.logging import print_log
+from mmengine.logging import MessageHub
 from torch import Tensor
 
 from mmseg.registry import MODELS
@@ -395,11 +396,12 @@ class EncoderDecoder(BaseSegmentor):
 
 @MODELS.register_module()
 class EncoderDecoderWithCls(EncoderDecoder):
-    def __init__(self, cls_head, cls_loss_weight=0.3, **kwargs):
+    def __init__(self, cls_head, cls_loss_weight=0.3, cls_decay_iters=5000, **kwargs):
         super().__init__(**kwargs)
 
         self.cls_head = MODELS.build(cls_head)
         self.cls_loss_weight = cls_loss_weight
+        self.cls_decay_iters = cls_decay_iters
 
         # choose depending on your setup
         self.loss_cls = nn.CrossEntropyLoss()
@@ -435,6 +437,10 @@ class EncoderDecoderWithCls(EncoderDecoder):
         cls_logits = self.cls_head(x[-1])
         probs = torch.softmax(cls_logits, dim=1)
         loss_cls = self.loss_cls(probs, labels)
-        losses['loss_cls'] = self.cls_loss_weight * loss_cls
+
+        runner = MessageHub.get_current_instance()
+        cur_iter = runner.get_info('iter')
+        progress = min(cur_iter / (self.cls_decay_iters + 1e-6), 1.0)
+        losses['loss_cls'] = self.cls_loss_weight * loss_cls * (1 - progress)
 
         return losses
