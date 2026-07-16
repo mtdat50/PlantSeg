@@ -1,5 +1,5 @@
 _base_ = [
-    'segnext_mscan-t_10k_plantsegwheat.py'
+    'segnext_mscan-t_10k_rice.py'
 ]
 
 
@@ -23,7 +23,7 @@ model = dict(
     cls_head=dict(
         type='ClsHead',
         in_channels=256,
-        num_classes=9
+        num_classes=3
     ),
     cls_loss_weight=0.1,
     decode_head=dict(
