@@ -904,9 +904,6 @@ class MSCASpatialAttention(BaseModule):
         super().__init__()
         if hidden_channels is None:
             hidden_channels = in_channels
-        # print("MSCASpatialAttention", end=', ')
-        # print("in channels", in_channels, end=', ')
-        # print("hidden channels", hidden_channels)
         self.proj_1 = nn.Conv2d(in_channels, hidden_channels, 1)
         self.activation = build_activation_layer(act_cfg)
         self.spatial_gating_unit = MSCAAttention(hidden_channels,
@@ -1007,9 +1004,7 @@ class AttentionModule(BaseModule):
         shorcut = x.clone()
         x = self.proj_1(x)
         x = self.activation(x)
-        # print('========\nbefore spatial gating unit', x.shape)
         x = self.spatial_gating_unit(x)
-        # print('after spatial gating unit', x.shape)
         x = self.proj_2(x)
         x = x + shorcut
         return x
@@ -1301,7 +1296,91 @@ class MSCABlockWithChannelAttention(BaseModule):
                 *
                 self.channel_attention(normed_x))
         x = (2 - self.warmup_progress) * x + self.warmup_progress * channel_attn
-        # print("===self.alpha", self.alpha)
+
+        x = x.view(B, C, H, W)
+        x = x + self.drop_path(
+            self.layer_scale_1.unsqueeze(-1).unsqueeze(-1) *
+            self.attn(self.norm1(x)))
+        x = x + self.drop_path(
+            self.layer_scale_2.unsqueeze(-1).unsqueeze(-1) *
+            self.mlp(self.norm2(x)))
+
+        x = x.view(B, C, N).permute(0, 2, 1)
+        return x
+
+
+class MainCustomMSCABlock(BaseModule):
+    def __init__(self,
+                 channels,
+                 mlp_ratio=4.,
+                 msca_ratio=1.,
+                 drop=0.,
+                 drop_path=0.,
+                 act_cfg=dict(type='GELU'),
+                 norm_cfg=dict(type='SyncBN', requires_grad=True),
+                 custom_spatial_version=17,
+                 channel_attn = 'ECA',
+                 ):
+        super().__init__()
+        self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
+
+        self.warmup_progress = 0.
+        self.channel_attention_type = channel_attn
+        match channel_attn:
+            case 'CBAM':
+                self.channel_attention = CAM(channels, r=1)
+            case 'SE':
+                self.channel_attention = SqueezeExcitation(channels, channels // 16)
+                # self.channel_attention = SqEx(channels, channels // 16)
+            case 'ECA':
+                t = (math.log2(channels) + 1) // 2
+                k = t if t % 2 else t + 1
+                self.channel_attention = eca_layer(k_size=int(k))
+            case _:
+                self.channel_attention = nn.Identity()
+
+        self.norm1 = build_norm_layer(norm_cfg, channels)[1]
+        self.attn = CustomMSCASpatialAttention(
+            custom_version=custom_spatial_version,
+            in_channels=channels,
+            hidden_channels=int(msca_ratio * channels),
+            act_cfg=act_cfg
+        )
+
+        self.drop_path = DropPath(
+            drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = build_norm_layer(norm_cfg, channels)[1]
+        self.mlp = Mlp(
+            in_features=channels,
+            hidden_features=int(channels * mlp_ratio),
+            act_cfg=act_cfg,
+            drop=drop)
+        layer_scale_init_value = 1e-2
+        self.layer_scale_0 = nn.Parameter(
+            layer_scale_init_value * torch.ones(channels), requires_grad=True)
+        self.layer_scale_1 = nn.Parameter(
+            layer_scale_init_value * torch.ones(channels), requires_grad=True)
+        self.layer_scale_2 = nn.Parameter(
+            layer_scale_init_value * torch.ones(channels), requires_grad=True)
+
+    def forward(self, x, H, W):
+        """Forward function."""
+
+        B, N, C = x.shape
+        x = x.permute(0, 2, 1)
+
+        x = x.view(B, C, N)
+        if self.channel_attention_type in ['SE', 'ECA']:
+            normed_x = self.norm0(x)
+            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
+        else:
+            normed_x = self.norm0(x)
+            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                *
+                self.channel_attention(normed_x))
+        x = (2 - self.warmup_progress) * x + self.warmup_progress * channel_attn
 
         x = x.view(B, C, H, W)
         x = x + self.drop_path(
@@ -1751,3 +1830,108 @@ class MSCANWithChannelAttention(MSCAN):
             setattr(self, f'block{i + 1}', block)
             setattr(self, f'norm{i + 1}', norm)
 
+@MODELS.register_module()
+class MainCustomMSCAN(MSCAN):
+    def __init__(self,
+                 in_channels=3,
+                 embed_dims=[64, 128, 256, 512],
+                 mlp_ratios=[4, 4, 4, 4],
+                 drop_rate=0.,
+                 drop_path_rate=0.,
+                 depths=[3, 4, 6, 3],
+                 num_stages=4,
+                 act_cfg=dict(type='GELU'),
+                 norm_cfg=dict(type='SyncBN', requires_grad=True),
+                 pretrained=None,
+                 init_cfg=None,
+                 custom_spatial_version=17,
+                 channel_attn = 'ECA',
+                 **kwargs
+                 ):
+        super().__init__(init_cfg=init_cfg)
+
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be set at the same time'
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+        elif pretrained is not None:
+            raise TypeError('pretrained must be a str or None')
+
+        self.depths = depths
+        self.num_stages = num_stages
+
+        dpr = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
+        ]  # stochastic depth decay rule
+        cur = 0
+
+        for i in range(num_stages):
+            if i == 0:
+                patch_embed = StemConv(3, embed_dims[0], norm_cfg=norm_cfg)
+            else:
+                patch_embed = OverlapPatchEmbed(
+                    patch_size=7 if i == 0 else 3,
+                    stride=4 if i == 0 else 2,
+                    in_channels=in_channels if i == 0 else embed_dims[i - 1],
+                    embed_dim=embed_dims[i],
+                    norm_cfg=norm_cfg)
+
+            block = nn.ModuleList([
+                MainCustomMSCABlock(
+                    channels=embed_dims[i],
+                    mlp_ratio=mlp_ratios[i],
+                    drop=drop_rate,
+                    drop_path=dpr[cur + j],
+                    act_cfg=act_cfg,
+                    norm_cfg=norm_cfg,
+                    custom_spatial_version=custom_spatial_version,
+                    channel_attn=channel_attn,
+                ) for j in range(depths[i])
+            ])
+
+            norm = nn.LayerNorm(embed_dims[i])
+            cur += depths[i]
+
+            setattr(self, f'patch_embed{i + 1}', patch_embed)
+            setattr(self, f'block{i + 1}', block)
+            setattr(self, f'norm{i + 1}', norm)
+
+    def init_weights(self):
+        """Initialize modules of MSCAN."""
+
+        print('init cfg', self.init_cfg)
+        if self.init_cfg is None:
+            for m in self.modules():
+                if isinstance(m, nn.Linear):
+                    trunc_normal_init(m, std=.02, bias=0.)
+                elif isinstance(m, nn.LayerNorm):
+                    constant_init(m, val=1.0, bias=0.)
+                elif isinstance(m, nn.Conv2d):
+                    fan_out = m.kernel_size[0] * m.kernel_size[
+                        1] * m.out_channels
+                    fan_out //= m.groups
+                    normal_init(
+                        m, mean=0, std=math.sqrt(2.0 / fan_out), bias=0)
+        else:
+            super().init_weights()
+
+    def forward(self, x):
+        """Forward function."""
+
+        B = x.shape[0]
+        outs = []
+
+        for i in range(self.num_stages):
+            patch_embed = getattr(self, f'patch_embed{i + 1}')
+            block = getattr(self, f'block{i + 1}')
+            norm = getattr(self, f'norm{i + 1}')
+            x, H, W = patch_embed(x)
+            for blk in block:
+                x = blk(x, H, W)
+            x = norm(x)
+            x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+            outs.append(x)
+
+        return outs
