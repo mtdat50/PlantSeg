@@ -1319,7 +1319,7 @@ class MainCustomMSCABlock(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  custom_spatial_version=17,
-                 channel_attn = 'ECA',
+                 channel_attn = None,
                  ):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
