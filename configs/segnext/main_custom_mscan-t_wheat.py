@@ -164,7 +164,7 @@ checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'
 # )
 #
 #====================================
-# spatial 
+# spatial
 model = dict(
     type='EncoderDecoder',
     backbone=dict(

@@ -1324,7 +1324,6 @@ class MainCustomMSCABlock(BaseModule):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
 
-        self.warmup_progress = 0.
         self.channel_attention_type = channel_attn
         match channel_attn:
             case 'CBAM':
@@ -1337,7 +1336,7 @@ class MainCustomMSCABlock(BaseModule):
                 k = t if t % 2 else t + 1
                 self.channel_attention = eca_layer(k_size=int(k))
             case _:
-                self.channel_attention = nn.Identity()
+                self.channel_attention_type = None
 
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
         self.attn = CustomMSCASpatialAttention(
@@ -1356,8 +1355,9 @@ class MainCustomMSCABlock(BaseModule):
             act_cfg=act_cfg,
             drop=drop)
         layer_scale_init_value = 1e-2
-        self.layer_scale_0 = nn.Parameter(
-            layer_scale_init_value * torch.ones(channels), requires_grad=True)
+        if self.channel_attention_type is not None:
+            self.layer_scale_0 = nn.Parameter(
+                layer_scale_init_value * torch.ones(channels), requires_grad=True)
         self.layer_scale_1 = nn.Parameter(
             layer_scale_init_value * torch.ones(channels), requires_grad=True)
         self.layer_scale_2 = nn.Parameter(
@@ -1369,18 +1369,19 @@ class MainCustomMSCABlock(BaseModule):
         B, N, C = x.shape
         x = x.permute(0, 2, 1)
 
-        x = x.view(B, C, N)
-        if self.channel_attention_type in ['SE', 'ECA']:
-            normed_x = self.norm0(x)
-            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
-                *
-                self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
-        else:
-            normed_x = self.norm0(x)
-            channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
-                *
-                self.channel_attention(normed_x))
-        x = (2 - self.warmup_progress) * x + self.warmup_progress * channel_attn
+        if self.channel_attention_type is not None:
+            x = x.view(B, C, N)
+            if self.channel_attention_type in ['SE', 'ECA']:
+                normed_x = self.norm0(x)
+                channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                    *
+                    self.channel_attention(normed_x.view(B, C, H, W)).view(B, C, N))
+            else:
+                normed_x = self.norm0(x)
+                channel_attn = self.drop_path(self.layer_scale_0.unsqueeze(-1)
+                    *
+                    self.channel_attention(normed_x))
+            x = x + channel_attn
 
         x = x.view(B, C, H, W)
         x = x + self.drop_path(
