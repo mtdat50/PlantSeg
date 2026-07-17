@@ -164,7 +164,7 @@ checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'
 # )
 #
 #====================================
-# spatial + channel attn only
+# spatial 
 model = dict(
     type='EncoderDecoder',
     backbone=dict(
@@ -178,7 +178,7 @@ model = dict(
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
         custom_version=17,
-        channel_attention='ECA',
+        # channel_attention='ECA',
     ),
     decode_head=dict(
         loss_decode=[
