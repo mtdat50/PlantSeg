@@ -193,7 +193,7 @@ def main():
     # prepare confusion_matrix storage on disk
     os.remove("confusion_matrix.npy") if os.path.exists("confusion_matrix.npy") else None
 
-    checkpoint_paths = glob.glob(os.path.join(cfg.work_dir, 'best*'))
+    checkpoint_paths = glob.glob(os.path.join(cfg.work_dir, '*best*.pth'))
 
     # start training
     for i in range(5):
