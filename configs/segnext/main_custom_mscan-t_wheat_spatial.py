@@ -6,7 +6,7 @@ _base_ = [
 model = dict(
     type='EncoderDecoder',
     backbone=dict(
-        type='MainCustomMSCAN',
+        type='MSCANWithCustomSpatialAttention',
         custom_version=17,
         # channel_attention='ECA',
     ),
