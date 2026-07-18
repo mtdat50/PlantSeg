@@ -81,7 +81,7 @@ class Mlp(BaseModule):
             case "CBAM":
                 self.channel_attention = CAM(hidden_features, r=1)
             case _:
-                self.channel_attention = nn.Identity()
+                self.channel_attention = None
 
     def forward(self, x):
         """Forward function."""
@@ -95,7 +95,8 @@ class Mlp(BaseModule):
             x = self.dwconv1[i](x)
             x = self.act(x)
 
-        x = x + self.channel_attention(x)
+        if self.channel_attention is not None:
+            x = x + self.channel_attention(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = self.drop(x)
