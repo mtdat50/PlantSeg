@@ -4,7 +4,6 @@ _base_ = [
 
 # spatial
 model = dict(
-    type='EncoderDecoder',
     backbone=dict(
         type='MSCANWithCustomSpatialAttention',
         custom_version=17,
