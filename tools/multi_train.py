@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import os.path as osp
+import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -208,10 +209,21 @@ def main():
         runner.save_checkpoint(
             out_dir=cfg.work_dir,
             filename=f'model_{i}.pth', 
-            save_optimizer=True,       # Include optimizer state for resuming
-            save_param_scheduler=True, # Include scheduler state
-            meta={'comment': 'Manual save'} # Optional metadata
+            save_optimizer=True,       
+            save_param_scheduler=True,
+            meta={'comment': 'Manual save'} 
         )
+
+        files = glob.glob(os.path.join(cfg.work_dir, 'best*'))
+        checkpoint_path = max(files, key=os.path.getmtime)
+        dir = os.path.dirname(checkpoint_path)
+        filename = os.path.basename(checkpoint_path)
+        new_file_name = os.path.join(dir, f"{i}_{filename}")
+        os.rename(checkpoint_path, new_file_name)
+
+        # load best model
+        runner.load_checkpoint(new_file_name, map_location='cpu') 
+        runner.model.cuda()
 
         test_seeds = [2**j for j in range(10)]
         for test_seed in test_seeds:
