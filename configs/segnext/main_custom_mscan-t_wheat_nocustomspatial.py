@@ -2,15 +2,13 @@ _base_ = [
     'segnext_mscan-t_10k_plantsegwheat.py'
 ]
 
-
-checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
-#no channel attn
+# default spatial attn
 cls_loss_weight = 0.1
 model = dict(
     type='EncoderDecoderWithCls',
     backbone=dict(
-        type='MSCANWithCustomSpatialAttention',
-        custom_version=17,
+        type='MSCANWithChannelAttention',
+        channel_attention='ECA',
     ),
     cls_head=dict(
         type='ClsHead',
