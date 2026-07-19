@@ -7,7 +7,6 @@ model = dict(
     backbone=dict(
         type='MSCANWithCustomSpatialAttention',
         custom_version=17,
-        # channel_attention='ECA',
     ),
     decode_head=dict(
         loss_decode=[

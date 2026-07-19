@@ -1302,7 +1302,7 @@ class MainCustomMSCABlock(BaseModule):
                  drop_path=0.,
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
-                 custom_spatial_version=17,
+                 custom_spatial_version=None,
                  channel_attn = None,
                  ):
         super().__init__()
@@ -1805,7 +1805,7 @@ class MSCANWithChannelAttention(MSCAN):
                     channel_attn=channel_attn,
                     ham_kwargs=ham_kwargs,
                     ham_norm_cfg=ham_norm_cfg,
-                    input_size=input_size // (4 * 2**i)) for j in range(depths[i])
+                    ) for j in range(depths[i])
             ])
             norm = nn.LayerNorm(embed_dims[i])
             cur += depths[i]
@@ -1818,8 +1818,8 @@ class MSCANWithChannelAttention(MSCAN):
 class MainCustomMSCAN(MSCAN):
     def __init__(self,
                  in_channels=3,
-                 embed_dims=[64, 128, 256, 512],
-                 mlp_ratios=[4, 4, 4, 4],
+                 embed_dims=[32, 64, 160, 256],
+                 mlp_ratios=[8, 8, 4, 4],
                  drop_rate=0.,
                  drop_path_rate=0.,
                  depths=[3, 4, 6, 3],
@@ -1828,7 +1828,7 @@ class MainCustomMSCAN(MSCAN):
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
                  init_cfg=None,
-                 custom_spatial_version=17,
+                 custom_spatial_version=None,
                  channel_attn = 'ECA',
                  **kwargs
                  ):

@@ -39,8 +39,8 @@ default_hooks = dict(
         type='CheckpointHook',
         by_epoch=False,
         interval=iters,
-        save_best='mIoU',
-        max_keep_ckpts=1
+        # save_best='mIoU',
+        # max_keep_ckpts=1
     ),
     sampler_seed=dict(type='DistSamplerSeedHook'),
     visualization=dict(type='SegVisualizationHook'))
