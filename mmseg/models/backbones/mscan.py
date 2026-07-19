@@ -1070,7 +1070,7 @@ class MSCABlock(BaseModule):
 
 
 class MSCABlockWithCustomSpatialAttention(MSCABlock):
-    def __init__(self, custom_version=1, **kwargs):
+    def __init__(self, custom_version=None, **kwargs):
         super().__init__(**kwargs)
         self.attn = CustomMSCASpatialAttention(
             custom_version,
@@ -1320,7 +1320,7 @@ class MainCustomMSCABlock(BaseModule):
                 k = t if t % 2 else t + 1
                 self.channel_attention = eca_layer(k_size=int(k))
             case _:
-                self.channel_attention_type = None
+                self.channel_attention = None
 
         self.norm1 = build_norm_layer(norm_cfg, channels)[1]
         self.attn = CustomMSCASpatialAttention(
@@ -1353,7 +1353,7 @@ class MainCustomMSCABlock(BaseModule):
         B, N, C = x.shape
         x = x.permute(0, 2, 1)
 
-        if self.channel_attention_type is not None:
+        if self.channel_attention is not None:
             x = x.view(B, C, N)
             if self.channel_attention_type in ['SE', 'ECA']:
                 normed_x = self.norm0(x)
