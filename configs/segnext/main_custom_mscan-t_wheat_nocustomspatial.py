@@ -3,22 +3,11 @@ _base_ = [
 ]
 
 # default spatial attn
-crop_size = (256, 256)
-data_preprocessor = dict(
-    type='SegDataPreProcessor',
-    mean=[123.675, 116.28, 103.53],
-    std=[58.395, 57.12, 57.375],
-    bgr_to_rgb=True,
-    pad_val=0,
-    seg_pad_val=255,
-    size=crop_size,
-    test_cfg=dict(size_divisor=32))
 cls_loss_weight = 0.1
 model = dict(
     type='EncoderDecoderWithCls',
-    data_preprocessor=data_preprocessor,
     backbone=dict(
-        type='MSCANWithChannelAttention',
+        type='MainCustomMSCAN',
         channel_attention='ECA',
     ),
     cls_head=dict(
