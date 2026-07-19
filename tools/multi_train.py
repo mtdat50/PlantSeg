@@ -214,16 +214,16 @@ def main():
             meta={'comment': 'Manual save'} 
         )
 
-        files = glob.glob(os.path.join(cfg.work_dir, 'best*'))
-        checkpoint_path = max(files, key=os.path.getmtime)
-        dir = os.path.dirname(checkpoint_path)
-        filename = os.path.basename(checkpoint_path)
-        new_file_name = os.path.join(dir, f"{i}_{filename}")
-        os.rename(checkpoint_path, new_file_name)
-
+        # files = glob.glob(os.path.join(cfg.work_dir, 'best*'))
+        # checkpoint_path = max(files, key=os.path.getmtime)
+        # dir = os.path.dirname(checkpoint_path)
+        # filename = os.path.basename(checkpoint_path)
+        # new_file_name = os.path.join(dir, f"{i}_{filename}")
+        # os.rename(checkpoint_path, new_file_name)
+        #
         # load best model
-        runner.load_checkpoint(new_file_name, map_location='cpu') 
-        runner.model.cuda()
+        # runner.load_checkpoint(new_file_name, map_location='cpu') 
+        # runner.model.cuda()
 
         test_seeds = [2**j for j in range(10)]
         for test_seed in test_seeds:
