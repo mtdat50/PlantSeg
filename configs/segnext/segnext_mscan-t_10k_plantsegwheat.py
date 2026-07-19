@@ -24,7 +24,7 @@ model = dict(
     pretrained=None,
     backbone=dict(
         type='MSCAN',
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
+        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
         embed_dims=[32, 64, 160, 256],
         mlp_ratios=[8, 8, 4, 4],
         drop_rate=0.0,
