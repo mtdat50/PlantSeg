@@ -193,7 +193,7 @@ def main():
     # prepare confusion_matrix storage on disk
     os.remove("confusion_matrix.npy") if os.path.exists("confusion_matrix.npy") else None
 
-    checkpoint_paths = glob.glob(os.path.join(cfg.work_dir, '*best*.pth'))
+    # checkpoint_paths = glob.glob(os.path.join(cfg.work_dir, 'model_*.pth'))
 
     # start training
     for i in range(5):
@@ -206,7 +206,9 @@ def main():
             runner = RUNNERS.build(cfg)
 
         # load best model
-        runner.load_checkpoint(checkpoint_paths[i], map_location='cpu') 
+
+        # runner.load_checkpoint(checkpoint_paths[i], map_location='cpu') 
+        runner.load_checkpoint(f"model_{i}.pth", map_location='cpu') 
         runner.model.cuda()
 
         test_seeds = [2**j for j in range(10)]
