@@ -208,7 +208,8 @@ def main():
         # load best model
 
         # runner.load_checkpoint(checkpoint_paths[i], map_location='cpu') 
-        runner.load_checkpoint(f"model_{i}.pth", map_location='cpu') 
+        checkpoint_path = osp.join(cfg.work_dir, f"model_{i}.pth")
+        runner.load_checkpoint(checkpoint_path, map_location='cpu') 
         runner.model.cuda()
 
         test_seeds = [2**j for j in range(10)]
