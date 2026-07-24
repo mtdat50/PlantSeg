@@ -815,6 +815,7 @@ class CustomMSCAAttention16(CustomMSCAAttention8):
 
 class CustomMSCAAttention17(CustomMSCAAttention2):
     def __init__(self, channels):
+        print("==== CustomMSCAAttention17")
         super().__init__(channels)
         self.gap = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
@@ -1171,6 +1172,7 @@ class eca_layer(nn.Module):
         k_size: Adaptive selection of kernel size
     """
     def __init__(self, k_size=3):
+        print("==== eca_layer")
         super(eca_layer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
@@ -1303,13 +1305,13 @@ class MainCustomMSCABlock(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  custom_spatial_version=None,
-                 channel_attn = None,
+                 channel_attention = None,
                  ):
         super().__init__()
         self.norm0 = build_norm_layer(dict(type='BN1d', requires_grad=True), channels, channels)[1]
 
-        self.channel_attention_type = channel_attn
-        match channel_attn:
+        self.channel_attention_type = channel_attention
+        match channel_attention:
             case 'CBAM':
                 self.channel_attention = CAM(channels, r=1)
             case 'SE':
@@ -1828,8 +1830,8 @@ class MainCustomMSCAN(MSCAN):
                  norm_cfg=dict(type='SyncBN', requires_grad=True),
                  pretrained=None,
                  init_cfg=None,
-                 custom_spatial_version=None,
-                 channel_attn = 'ECA',
+                 custom_version=None,
+                 channel_attention = 'ECA',
                  **kwargs
                  ):
         super().__init__(init_cfg=init_cfg)
@@ -1870,8 +1872,8 @@ class MainCustomMSCAN(MSCAN):
                     drop_path=dpr[cur + j],
                     act_cfg=act_cfg,
                     norm_cfg=norm_cfg,
-                    custom_spatial_version=custom_spatial_version,
-                    channel_attn=channel_attn,
+                    custom_spatial_version=custom_version,
+                    channel_attention=channel_attention,
                 ) for j in range(depths[i])
             ])
 
