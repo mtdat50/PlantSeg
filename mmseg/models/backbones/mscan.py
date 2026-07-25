@@ -867,6 +867,111 @@ class CustomMSCAAttention17(CustomMSCAAttention2):
         return out
 
 
+class CustomMSCAAttention18(MSCAAttention):
+    def __init__(self, channels):
+        print("==== CustomMSCAAttention18")
+        super().__init__(channels)
+        self.gap = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Unflatten(1, (channels, ))
+        )
+        self.weighting = SqueezeExcitation(channels * 4, channels // 16)
+        self.channel_mixing = nn.Conv2d(channels, channels, 1)
+
+    def forward(self, x):
+        """Forward function."""
+
+        u = x.clone()
+
+        attn = self.conv0(x)
+
+        # Multi-Scale Feature extraction
+        attn_0 = self.conv0_1(attn)
+        attn_0 = self.conv0_2(attn_0)
+
+        attn_1 = self.conv1_1(attn)
+        attn_1 = self.conv1_2(attn_1)
+
+        attn_2 = self.conv2_1(attn)
+        attn_2 = self.conv2_2(attn_2)
+
+        pooled = torch.cat(
+            [
+                self.gap(attn),
+                self.gap(attn_0),
+                self.gap(attn_1),
+                self.gap(attn_2)
+            ],
+            dim=1
+        )
+        weights = self.weighting(pooled.unsqueeze(-1).unsqueeze(-1))
+        weights = torch.chunk(weights, chunks=4, dim=1)
+
+        attn = (
+            weights[0] * attn +
+            weights[1] * attn_0 +
+            weights[2] * attn_1 +
+            weights[3] * attn_2
+        )
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
+class CustomMSCAAttention19(CustomMSCAAttention2):
+    def __init__(self, channels):
+        print("==== CustomMSCAAttention19")
+        super().__init__(channels)
+        self.gap = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Unflatten(1, (channels, ))
+        )
+        self.weighting = SqueezeExcitation(channels * 4, channels // 16)
+
+    def forward(self, x):
+        u = x.clone()
+
+        # Multi-Scale Feature extraction
+        attn0 = self.conv0(x)
+        attn1 = self.conv1(attn0)
+        sum1 = attn1 + attn0
+        attn2 = self.conv2(sum1)
+        sum2 = sum1 + attn2
+        attn3 = self.conv3(sum2)
+        sum3 = sum2 + attn3
+        attn4 = self.conv4(sum3)
+
+        pooled = torch.cat(
+            [
+                self.gap(attn1),
+                self.gap(attn2),
+                self.gap(attn3),
+                self.gap(attn4)
+            ],
+            dim=1
+        )
+        weights = self.weighting(pooled.unsqueeze(-1).unsqueeze(-1))
+        weights = torch.chunk(weights, chunks=4, dim=1)
+
+        attn = (
+            weights[0] * attn1 +
+            weights[1] * attn2 +
+            weights[2] * attn3 +
+            weights[3] * attn4
+        )
+        attn = self.channel_mixing(attn)
+
+        # Convolutional Attention
+        out = attn * u
+
+        return out
+
+
 class MSCASpatialAttention(BaseModule):
     """Spatial Attention Module in Multi-Scale Convolutional Attention Module
     (MSCA).
@@ -951,6 +1056,10 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention16(hidden_channels)
             case 17:
                 self.spatial_gating_unit = CustomMSCAAttention17(hidden_channels)
+            case 18:
+                self.spatial_gating_unit = CustomMSCAAttention18(hidden_channels)
+            case 19:
+                self.spatial_gating_unit = CustomMSCAAttention19(hidden_channels)
 
 
 class AttentionModule(BaseModule):
