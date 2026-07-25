@@ -876,7 +876,7 @@ class CustomMSCAAttention18(MSCAAttention):
             nn.Flatten(),
             nn.Unflatten(1, (channels, ))
         )
-        self.weighting = SqueezeExcitation(channels * 4, channels // 8)
+        self.weighting = SqueezeExcitation(channels * 4, channels // 16)
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
     def forward(self, x):
@@ -922,54 +922,15 @@ class CustomMSCAAttention18(MSCAAttention):
         return out
 
 
-class CustomMSCAAttention19(CustomMSCAAttention2):
+class CustomMSCAAttention19(CustomMSCAAttention17):
     def __init__(self, channels):
         print("==== CustomMSCAAttention19")
         super().__init__(channels)
-        self.gap = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Unflatten(1, (channels, ))
+        self.weighting = nn.Sequential(
+            nn.Linear(channels * 4, channels // 8),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // 8, 4),
         )
-        self.weighting = SqueezeExcitation(channels * 4, channels // 8)
-
-    def forward(self, x):
-        u = x.clone()
-
-        # Multi-Scale Feature extraction
-        attn0 = self.conv0(x)
-        attn1 = self.conv1(attn0)
-        sum1 = attn1 + attn0
-        attn2 = self.conv2(sum1)
-        sum2 = sum1 + attn2
-        attn3 = self.conv3(sum2)
-        sum3 = sum2 + attn3
-        attn4 = self.conv4(sum3)
-
-        pooled = torch.cat(
-            [
-                self.gap(attn1),
-                self.gap(attn2),
-                self.gap(attn3),
-                self.gap(attn4)
-            ],
-            dim=1
-        )
-        weights = self.weighting(pooled.unsqueeze(-1).unsqueeze(-1))
-        weights = torch.chunk(weights, chunks=4, dim=1)
-
-        attn = (
-            weights[0] * attn1 +
-            weights[1] * attn2 +
-            weights[2] * attn3 +
-            weights[3] * attn4
-        )
-        attn = self.channel_mixing(attn)
-
-        # Convolutional Attention
-        out = attn * u
-
-        return out
 
 
 class MSCASpatialAttention(BaseModule):
