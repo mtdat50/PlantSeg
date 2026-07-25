@@ -876,7 +876,7 @@ class CustomMSCAAttention18(MSCAAttention):
             nn.Flatten(),
             nn.Unflatten(1, (channels, ))
         )
-        self.weighting = SqueezeExcitation(channels * 4, channels // 16)
+        self.weighting = SqueezeExcitation(channels * 4, channels // 8)
         self.channel_mixing = nn.Conv2d(channels, channels, 1)
 
     def forward(self, x):
@@ -931,7 +931,7 @@ class CustomMSCAAttention19(CustomMSCAAttention2):
             nn.Flatten(),
             nn.Unflatten(1, (channels, ))
         )
-        self.weighting = SqueezeExcitation(channels * 4, channels // 16)
+        self.weighting = SqueezeExcitation(channels * 4, channels // 8)
 
     def forward(self, x):
         u = x.clone()
