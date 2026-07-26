@@ -953,8 +953,8 @@ class CustomMSCASpatialAttention(MSCASpatialAttention):
                 self.spatial_gating_unit = CustomMSCAAttention16(hidden_channels)
             case 17:
                 self.spatial_gating_unit = CustomMSCAAttention17(hidden_channels)
-            case 18:
-                self.spatial_gating_unit = CustomMSCAAttention18(hidden_channels)
+            # case 18:
+            #     self.spatial_gating_unit = CustomMSCAAttention18(hidden_channels)
             case 19:
                 self.spatial_gating_unit = CustomMSCAAttention19(hidden_channels)
 
@@ -1837,7 +1837,7 @@ class MainCustomMSCAN(MSCAN):
                  pretrained=None,
                  init_cfg=None,
                  custom_version=None,
-                 channel_attention = 'ECA',
+                 channel_attention = None,
                  **kwargs
                  ):
         super().__init__(init_cfg=init_cfg)

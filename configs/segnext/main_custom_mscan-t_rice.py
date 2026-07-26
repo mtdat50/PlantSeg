@@ -18,7 +18,7 @@ model = dict(
         depths=[3, 3, 5, 2],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        custom_version=17,
+        custom_version=19,
         channel_attention='ECA',
     ),
     cls_head=dict(
