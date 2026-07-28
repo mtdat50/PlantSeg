@@ -2,8 +2,9 @@ _base_ = [
     'segnext_mscan-t_10k_rice.py'
 ]
 
+
 checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
-# default spatial attn
+#without diceloss
 cls_loss_weight = 0.1
 model = dict(
     type='EncoderDecoderWithCls',
@@ -17,7 +18,7 @@ model = dict(
         depths=[3, 3, 5, 2],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        custom_version=None,
+        custom_version=19,
         channel_attention='ECA',
     ),
     cls_head=dict(
@@ -29,12 +30,12 @@ model = dict(
     cls_decay_iters=10000,
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', loss_weight=(1 - cls_loss_weight) / 2),
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=(1 - cls_loss_weight) / 2)
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=(1 - cls_loss_weight))
         ],
         ignore_index=255
     ),
 )
+
 
 # dataset settings
 # train_dataloader = dict(batch_size=2)

@@ -9,8 +9,17 @@ cls_loss_weight = 0.1
 model = dict(
     type='EncoderDecoderWithCls',
     backbone=dict(
-        type='MSCANWithCustomSpatialAttention',
-        custom_version=17,
+        type='MainCustomMSCAN',
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file),
+        embed_dims=[32, 64, 160, 256],
+        mlp_ratios=[8, 8, 4, 4],
+        drop_rate=0.0,
+        drop_path_rate=0.1,
+        depths=[3, 3, 5, 2],
+        act_cfg=dict(type='GELU'),
+        norm_cfg=dict(type='BN', requires_grad=True),
+        custom_version=19,
+        channel_attention=None,
     ),
     cls_head=dict(
         type='ClsHead',
