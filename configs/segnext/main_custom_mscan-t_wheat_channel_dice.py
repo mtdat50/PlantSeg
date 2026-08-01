@@ -5,7 +5,7 @@ _base_ = [
 
 checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
 # all
-cls_loss_weight = 0.1
+cls_loss_weight = 0.0
 # model settings
 model = dict(
     type='EncoderDecoderWithCls',
@@ -19,7 +19,7 @@ model = dict(
         depths=[3, 3, 5, 2],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        custom_version=19,
+        custom_version=None,
         channel_attention='ECA',
     ),
     cls_head=dict(

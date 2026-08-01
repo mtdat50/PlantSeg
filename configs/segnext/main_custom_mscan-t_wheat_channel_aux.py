@@ -19,7 +19,7 @@ model = dict(
         depths=[3, 3, 5, 2],
         act_cfg=dict(type='GELU'),
         norm_cfg=dict(type='BN', requires_grad=True),
-        custom_version=19,
+        custom_version=None,
         channel_attention='ECA',
     ),
     cls_head=dict(
@@ -31,8 +31,9 @@ model = dict(
     cls_decay_iters=10000,
     decode_head=dict(
         loss_decode=[
-            dict(type='DiceLoss', loss_weight=(1 - cls_loss_weight) / 2),
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=(1 - cls_loss_weight) / 2)
+            # dict(type='DiceLoss', loss_weight=(1 - cls_loss_weight) / 2),
+            # dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=(1 - cls_loss_weight) / 2)
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1 - cls_loss_weight)
         ],
         ignore_index=255
     ),
