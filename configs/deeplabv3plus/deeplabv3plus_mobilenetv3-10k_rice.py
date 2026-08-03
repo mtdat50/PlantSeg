@@ -1,7 +1,7 @@
 _base_ = [
     '../_base_/datasets/rice.py',
     '../_base_/default_runtime.py',
-    '../_base_/wheat_settings.py'
+    '../_base_/rice_settings.py'
 ]
 
 crop_size = (256, 256)
