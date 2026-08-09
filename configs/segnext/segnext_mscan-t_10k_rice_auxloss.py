@@ -12,10 +12,11 @@ model = dict(
         in_channels=256,   # depends on backbone
         num_classes=3
     ),
-    cls_loss_weight=0.3,
+    cls_loss_weight=0.1,
+    cls_decay_iters=2500,
     decode_head=dict(
         loss_decode=[
-           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.7, avg_non_ignore=True)
+           dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.9, avg_non_ignore=True)
         ],
         ignore_index=255
     ),

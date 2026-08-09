@@ -12,6 +12,7 @@ model = dict(
         num_classes=9
     ),
     cls_loss_weight=0.1,
+    cls_decay_iters=5000,
     decode_head=dict(
         loss_decode=[
            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.9, avg_non_ignore=True)

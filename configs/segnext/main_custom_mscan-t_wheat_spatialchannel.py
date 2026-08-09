@@ -15,7 +15,7 @@ data_preprocessor = dict(
     seg_pad_val=255,
     size=crop_size,
     test_cfg=dict(size_divisor=32))
-cls_loss_weight = 0.1
+cls_loss_weight = 0.0
 # model settings
 model = dict(
     type='EncoderDecoderWithCls',

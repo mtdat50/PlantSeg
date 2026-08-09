@@ -28,7 +28,7 @@ model = dict(
         num_classes=9
     ),
     cls_loss_weight=cls_loss_weight,
-    cls_decay_iters=10000,
+    cls_decay_iters=5000,
     decode_head=dict(
         loss_decode=[
             # dict(type='DiceLoss', loss_weight=(1 - cls_loss_weight) / 2),

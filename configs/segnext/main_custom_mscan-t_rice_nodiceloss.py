@@ -27,7 +27,7 @@ model = dict(
         num_classes=3
     ),
     cls_loss_weight=cls_loss_weight,
-    cls_decay_iters=10000,
+    cls_decay_iters=2500,
     decode_head=dict(
         loss_decode=[
             dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=(1 - cls_loss_weight))
