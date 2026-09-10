@@ -2,7 +2,8 @@ _base_ = [
     'segnext_mscan-t_10k_rice.py'
 ]
 
-checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
+# checkpoint_file = '~/.cache/torch/hub/checkpoints/mscan_t_20230227-119e8c9f.pth'  # noqa
+checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segnext/mscan_t_20230227-119e8c9f.pth'  # noqa
 # default spatial attn
 cls_loss_weight = 0.1
 model = dict(
